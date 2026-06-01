@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>OnePlantArt</title>
+    <link rel="stylesheet" href="./styles.css?v=20260601-rpc-config">
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">OP</div>
+        <div>
+          <h1>OnePlant</h1>
+          <p>Living plant cards on Ethereum</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <label class="network-picker">
+          <span>Network</span>
+          <select id="networkSelect"></select>
+        </label>
+        <button id="switchNetworkButton" class="secondary" type="button">Switch</button>
+        <button id="connectButton" type="button">Connect Wallet</button>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="tabbar" role="tablist" aria-label="OnePlant website sections">
+        <button id="homeTabButton" class="tab-button active" data-tab="home" type="button" role="tab" aria-selected="true">Home</button>
+        <button id="operationsTabButton" class="tab-button" data-tab="operations" type="button" role="tab" aria-selected="false">Dapp</button>
+        <button id="plantingTabButton" class="tab-button" data-tab="planting" type="button" role="tab" aria-selected="false">Planting</button>
+        <button id="configTabButton" class="tab-button" data-tab="config" type="button" role="tab" aria-selected="false">Config</button>
+        <button id="aboutTabButton" class="tab-button" data-tab="about" type="button" role="tab" aria-selected="false">About</button>
+        <button id="nftMarketTabButton" class="tab-button" data-tab="nftMarket" type="button" role="tab" aria-selected="false">NFT Martket</button>
+      </section>
+
+      <section id="homePanel" class="tab-panel active" role="tabpanel" aria-labelledby="homeTabButton">
+        <section class="home-hero" aria-label="OnePlantArt introduction">
+          <img class="home-hero-image" src="./content/1-pure-plant.svg" alt="A sealed OnePlantArt specimen card" fetchpriority="high">
+          <div class="home-hero-copy">
+            <p class="home-kicker">Fully on-chain living plant cards</p>
+            <h1>OnePlantArt</h1>
+            <p class="home-lede">A time-grown botanical art system where each OP card lives, evolves, and can be sealed into a rare Ethereum specimen.</p>
+            <div class="home-actions">
+              <button type="button" data-home-tab="planting">Start Planting</button>
+              <button class="secondary" type="button" data-home-tab="operations">Start Swap</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="home-proof-band" aria-label="OnePlantArt proof points">
+          <div>
+            <span>3,025,152</span>
+            <strong>identity-level plant bodies</strong>
+          </div>
+          <div>
+            <span>3.63B</span>
+            <strong>stage-aware plant appearances</strong>
+          </div>
+          <div>
+            <span>100+</span>
+            <strong>renderer contracts</strong>
+          </div>
+          <div>
+            <span>V4</span>
+            <strong>Uniswap Hook technology</strong>
+          </div>
+        </section>
+
+        <section class="home-intro">
+          <div>
+            <p class="home-kicker">The art engine</p>
+            <h2>Not a static mint. A lifecycle.</h2>
+          </div>
+          <p>OnePlantArt combines deterministic seed genetics, genus morphology, mutation classes, palette systems, habitats, stage progression, and sealed-card presentation into one browser-readable on-chain art object.</p>
+        </section>
+
+        <section class="home-scale">
+          <article>
+            <p class="home-kicker">Variation math</p>
+            <h3>3,025,152 plant-body identities before time moves.</h3>
+            <p>The production identity space combines 78 genus values, 101 epithets, 8 mutation classes, 12 palettes, and 4 cycle phases. Macro Stage and Growth Progress are excluded from this base count.</p>
+          </article>
+          <article>
+            <p class="home-kicker">Living lifecycle</p>
+            <h3>3,630,182,400 stage-aware appearances.</h3>
+            <p>Each identity can travel through 12 Macro Stages and 100 Growth Progress points per stage. Including the 2,147,483,647-value render seed, the procedural render space reaches about 7.79 quintillion stage-aware states.</p>
+          </article>
+          <article>
+            <p class="home-kicker">On-chain craft</p>
+            <h3>100+ contracts for one visual engine.</h3>
+            <p>The NFT renderer is split across layers, groups, kernels, and external shards so the art can stay rich on-chain. This is NOT pixel-like art; it is procedural SVG botany.</p>
+          </article>
+          <article>
+            <p class="home-kicker">Market primitive</p>
+            <h3>Built around Uniswap V4 Hook mechanics.</h3>
+            <p>Official swap flow uses a Uniswap V4 Hook path for UP fee logic, release pacing, burn behavior, and OP mint integration alongside the planting sale.</p>
+          </article>
+        </section>
+
+        <section class="home-atlas">
+          <article class="home-atlas-feature">
+            <img src="./content/4*4-oneplant_growth_atlas.svg" alt="One OnePlantArt identity shown across sixteen lifecycle moments" loading="lazy" decoding="async">
+            <div>
+              <p class="home-kicker">Time-grown lifecycle</p>
+              <h3>One identity, many moments</h3>
+              <p>The growth atlas shows a single plant moving from seed to mature bloom. It is the clearest way to explain that OP is time-driven art, not a frozen profile picture.</p>
+            </div>
+          </article>
+
+          <div class="home-atlas-grid">
+            <article>
+              <a href="./content/60-mature-sheet.svg" target="_blank" rel="noreferrer" aria-label="Open the mature specimen sheet">
+                <img src="./content/60-mature-sheet.svg" alt="Sixty mature OnePlantArt specimens" loading="lazy" decoding="async">
+              </a>
+              <div>
+                <p class="home-kicker">Mature specimens</p>
+                <h3>Sixty finished plants</h3>
+                <p>A quick wall of final-form cards showing how far the same renderer can stretch across structure, color, habitat, and bloom behavior.</p>
+              </div>
+            </article>
+
+            <article>
+              <a href="./content/78-genus-sheet.svg" target="_blank" rel="noreferrer" aria-label="Open the genus sheet">
+                <img src="./content/78-genus-sheet.svg" alt="Seventy-eight OnePlantArt genus families" loading="lazy" decoding="async">
+              </a>
+              <div>
+                <p class="home-kicker">Genus library</p>
+                <h3>Seventy-eight visual families</h3>
+                <p>The genus sheet is the strongest diversity proof: grasses, blooms, fungi, trees, pods, aquatic forms, and stranger botanical silhouettes.</p>
+              </div>
+            </article>
+
+            <article>
+              <a href="./content/120-full-stages-sheet.svg" target="_blank" rel="noreferrer" aria-label="Open the full lifecycle stage sheet">
+                <img src="./content/120-full-stages-sheet.svg" alt="One hundred twenty OnePlantArt lifecycle captures" loading="lazy" decoding="async">
+              </a>
+              <div>
+                <p class="home-kicker">Stage coverage</p>
+                <h3>Full lifecycle range</h3>
+                <p>The full-stage sheet shows the engine across early, mid, mature, sealed, sparse, dense, bright, and nocturnal states.</p>
+              </div>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section id="operationsPanel" class="tab-panel" role="tabpanel" aria-labelledby="operationsTabButton" hidden>
+        <section class="status-strip" aria-label="Wallet status">
+          <div class="metric">
+            <span>Wallet</span>
+            <strong id="walletMetric">Not connected</strong>
+          </div>
+          <div class="metric">
+            <span>ETH</span>
+            <strong id="ethMetric">-</strong>
+          </div>
+          <div class="metric">
+            <span>UP</span>
+            <strong id="upMetric">-</strong>
+          </div>
+          <div class="metric">
+            <span>OP</span>
+            <strong id="opMetric">-</strong>
+          </div>
+          <div class="metric">
+            <span>Release</span>
+            <strong id="releaseMetric">-</strong>
+          </div>
+        </section>
+
+        <section id="notice" class="notice" hidden></section>
+
+        <div class="workbench">
+          <section class="panel nft-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Your OnePlants</h2>
+                <p id="nftSubhead">Connect wallet to load OP cards.</p>
+              </div>
+              <button id="refreshButton" class="secondary" type="button">Refresh</button>
+            </div>
+
+            <div class="toolbar-row">
+              <div class="filters" role="group" aria-label="NFT filters">
+                <button class="chip active" data-filter="all" type="button">All</button>
+                <button class="chip" data-filter="unsealed" type="button">Unsealed</button>
+                <button class="chip" data-filter="sealed" type="button">Sealed</button>
+              </div>
+              <div class="selection-tools">
+                <button id="selectVisibleButton" class="secondary small-button" type="button">Select Visible</button>
+                <button id="clearSelectionButton" class="secondary small-button" type="button">Clear</button>
+              </div>
+            </div>
+
+            <div id="nftGrid" class="nft-grid">
+              <div class="empty-state">No wallet connected.</div>
+            </div>
+          </section>
+
+          <aside class="side-stack">
+            <section class="panel action-panel">
+              <div class="panel-head compact">
+                <div>
+                  <h2>Seal Control</h2>
+                  <p id="selectedTokenLabel">No OP selected</p>
+                </div>
+              </div>
+              <div class="selected-box" id="selectedTokenBox">
+                <span>Choose one or more cards from your wallet.</span>
+              </div>
+              <div class="batch-actions">
+                <button id="batchSealButton" type="button" disabled>Seal Selected</button>
+                <button id="batchUnsealButton" class="secondary" type="button" disabled>Unseal Selected</button>
+              </div>
+            </section>
+
+            <section class="panel swap-panel">
+              <div class="panel-head compact">
+                <div>
+                  <h2>Swap</h2>
+                  <p id="routeLabel">ETH / UP</p>
+                </div>
+              </div>
+
+              <div class="segmented" role="group" aria-label="Swap side">
+                <button class="active" data-side="buy" type="button">Buy UP</button>
+                <button data-side="sell" type="button">Sell UP</button>
+              </div>
+
+              <label class="field">
+                <span id="amountInLabel">ETH in</span>
+                <input id="amountInInput" inputmode="decimal" placeholder="0.001" autocomplete="off">
+              </label>
+
+              <label class="field">
+                <span>Slippage %</span>
+                <input id="slippageInput" inputmode="decimal" value="0.5" placeholder="0.5" autocomplete="off">
+              </label>
+
+              <label class="field">
+                <span id="amountOutMinLabel">Min UP out</span>
+                <input id="amountOutMinInput" inputmode="decimal" placeholder="0" autocomplete="off">
+              </label>
+
+              <div class="swap-summary">
+                <div>
+                  <span>Hook fee</span>
+                  <strong>0.5%</strong>
+                </div>
+                <div>
+                  <span>Mint unit</span>
+                  <strong>10000 UP</strong>
+                </div>
+              </div>
+              <div id="quoteStatus" class="quote-status">Enter an amount to quote.</div>
+
+              <button id="swapButton" type="button" disabled>Swap</button>
+            </section>
+          </aside>
+        </div>
+      </section>
+
+      <section id="plantingPanel" class="tab-panel" role="tabpanel" aria-labelledby="plantingTabButton" hidden>
+        <section id="plantingNotice" class="notice" hidden></section>
+
+        <section class="panel planting-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Planting</h2>
+              <p>Official OP planting sale.</p>
+            </div>
+            <button id="plantingRefreshButton" class="secondary" type="button">Refresh</button>
+          </div>
+
+          <section class="planting-overview" aria-label="Planting sale phases">
+            <div class="planting-copy">
+              <h3>5,000 OP cards, five mint phases.</h3>
+              <p>Planting distributes OP token IDs #5001-#10000. Each successful mint starts Unsealed and comes with 10,000 UP backing.</p>
+              <p>Wallets may participate in different phases independently when they meet that phase's rule.</p>
+            </div>
+            <div class="planting-phase-table" aria-label="Planting phase rules">
+              <div class="phase-row head">
+                <span>Phase</span>
+                <span>Supply</span>
+                <span>Price / OP</span>
+                <span>Wallet limit</span>
+              </div>
+              <div class="phase-row">
+                <span>1</span>
+                <span>1,000</span>
+                <span>Free</span>
+                <span>1 free OP per EOA wallet; wallet ETH balance must be at least 0.01 ETH; max 3 free mints per block.</span>
+              </div>
+              <div class="phase-row">
+                <span>2</span>
+                <span>1,000</span>
+                <span>0.001 ETH</span>
+                <span>1-3 OP per EOA wallet in this phase.</span>
+              </div>
+              <div class="phase-row">
+                <span>3</span>
+                <span>1,000</span>
+                <span>0.003 ETH</span>
+                <span>1-3 OP per EOA wallet in this phase.</span>
+              </div>
+              <div class="phase-row">
+                <span>4</span>
+                <span>1,000</span>
+                <span>0.01 ETH</span>
+                <span>1-3 OP per EOA wallet in this phase.</span>
+              </div>
+              <div class="phase-row">
+                <span>5</span>
+                <span>1,000</span>
+                <span>0.03 ETH</span>
+                <span>1-3 OP per EOA wallet in this phase.</span>
+              </div>
+            </div>
+          </section>
+
+          <div class="planting-metrics">
+            <div class="metric">
+              <span>Status</span>
+              <strong id="plantingStatusMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>Phase</span>
+              <strong id="plantingPhaseMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>Price</span>
+              <strong id="plantingPriceMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>Remaining</span>
+              <strong id="plantingRemainingMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>Your limit</span>
+              <strong id="plantingWalletMetric">-</strong>
+            </div>
+          </div>
+
+          <div class="planting-actions">
+            <section class="planting-card">
+              <div>
+                <h3>Free Planting</h3>
+                <p id="freePlantingStatus">Connect wallet to check eligibility.</p>
+              </div>
+              <button id="freePlantButton" type="button" disabled>Free Plant</button>
+            </section>
+
+            <section class="planting-card">
+              <div>
+                <h3>Paid Planting</h3>
+                <p id="paidPlantingStatus">Connect wallet to check the active paid phase.</p>
+              </div>
+              <label class="field planting-number-field">
+                <span>Plant number</span>
+                <input id="plantingNumberInput" inputmode="numeric" value="1" autocomplete="off">
+              </label>
+              <div class="planting-total">
+                <span>Total</span>
+                <strong id="plantingTotalCost">-</strong>
+              </div>
+              <button id="paidPlantButton" type="button" disabled>Paid Plant</button>
+            </section>
+          </div>
+        </section>
+      </section>
+
+      <section id="aboutPanel" class="tab-panel" role="tabpanel" aria-labelledby="aboutTabButton" hidden>
+        <article class="panel guide-panel">
+          <div class="panel-head">
+            <div>
+              <h2>About OnePlant</h2>
+              <p>Project mechanics, OP / UP backing, lifecycle, and user rules.</p>
+            </div>
+          </div>
+          <div id="aboutStatus" class="guide-status">Loading guide...</div>
+          <div id="aboutContent" class="guide-content"></div>
+        </article>
+      </section>
+
+      <section id="configPanel" class="tab-panel" role="tabpanel" aria-labelledby="configTabButton" hidden>
+        <article class="panel config-panel">
+          <div class="panel-head">
+            <div>
+              <h2>Config</h2>
+              <p>Set a custom read RPC for the selected network.</p>
+            </div>
+          </div>
+
+          <div class="config-metrics">
+            <div class="metric">
+              <span>Network</span>
+              <strong id="rpcNetworkMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>RPC source</span>
+              <strong id="rpcSourceMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>Active RPC</span>
+              <strong id="rpcActiveMetric">-</strong>
+            </div>
+          </div>
+
+          <section class="rpc-config-box">
+            <label class="field rpc-field">
+              <span>Custom RPC URL</span>
+              <input id="customRpcInput" inputmode="url" placeholder="https://..." autocomplete="off">
+            </label>
+            <div class="rpc-actions">
+              <button id="saveRpcButton" type="button">Save RPC</button>
+              <button id="testRpcButton" class="secondary" type="button">Test RPC</button>
+              <button id="clearRpcButton" class="secondary" type="button">Clear Custom RPC</button>
+            </div>
+            <div id="rpcStatus" class="quote-status">Using website RPC configuration.</div>
+            <p class="config-note">This changes website read calls such as balances, NFT loading, quotes, and planting status. Wallet-confirmed transactions are still sent by your wallet provider.</p>
+          </section>
+        </article>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <a id="coreLink" href="#" target="_blank" rel="noreferrer">OP</a>
+      <a id="upLink" href="#" target="_blank" rel="noreferrer">UP</a>
+      <a id="hookLink" href="#" target="_blank" rel="noreferrer">HOOK</a>
+      <a id="plantingLink" href="#" target="_blank" rel="noreferrer">Planting</a>
+      <a id="helperLink" href="#" target="_blank" rel="noreferrer">SwapHelper</a>
+      <a id="lpLockLink" href="#" target="_blank" rel="noreferrer">LP Lock</a>
+      <span id="configStatus">Loading config...</span>
+    </footer>
+
+    <script type="module" src="./app.js?v=20260601-lp-lock"></script>
+  </body>
+</html>
