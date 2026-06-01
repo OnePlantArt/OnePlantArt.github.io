@@ -8,8 +8,7 @@
       "chainId": 1,
       "rpcUrls": [
         "https://ethereum-rpc.publicnode.com",
-        "https://ethereum-public.nodies.app",
-        "https://eth.llamarpc.com"
+        "https://ethereum-public.nodies.app"
       ],
       "blockExplorerUrls": [
         "https://etherscan.io"
