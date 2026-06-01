@@ -1,0 +1,75 @@
+{
+  "defaultNetwork": "mainnet",
+  "networks": [
+    {
+      "key": "sepolia",
+      "label": "Sepolia",
+      "enabled": true,
+      "chainId": 11155111,
+      "rpcUrls": [
+        "https://ethereum-sepolia-rpc.publicnode.com"
+      ],
+      "blockExplorerUrls": [
+        "https://sepolia.etherscan.io"
+      ],
+      "nativeCurrency": {
+        "name": "Sepolia Ether",
+        "symbol": "ETH",
+        "decimals": 18
+      },
+      "contracts": {
+        "core": "0x91eCF3815138F301E9af667C4853f5E2bbC6ea44",
+        "upToken": "0xe40a8563482eb208802Ab1AdB25D630c9E2F4e58",
+        "plantingSale": "0x896BBF3105e7b8ECd7d2975Fca22cBa96adDd8b1",
+        "swapHelper": "0xd8a26559352B61518939cE83bf37B9D42d554bA8",
+        "hook": "0xD50a4aD7f94Db7968C546AE0466889099978c0cc",
+        "lpPositionLocker": "0x5a3a4e1036a15459004e11b6A5b59B7e1A3d54E4"
+      },
+      "poolKey": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "0xe40a8563482eb208802Ab1AdB25D630c9E2F4e58",
+        "fee": 3000,
+        "tickSpacing": 60,
+        "hooks": "0xD50a4aD7f94Db7968C546AE0466889099978c0cc"
+      }
+    },
+    {
+      "key": "mainnet",
+      "label": "Ethereum Mainnet",
+      "enabled": true,
+      "chainId": 1,
+      "rpcUrls": [
+        "https://ethereum-rpc.publicnode.com"
+      ],
+      "blockExplorerUrls": [
+        "https://etherscan.io"
+      ],
+      "nativeCurrency": {
+        "name": "Ether",
+        "symbol": "ETH",
+        "decimals": 18
+      },
+      "contracts": {
+        "core": "",
+        "upToken": "",
+        "plantingSale": "",
+        "swapHelper": "",
+        "hook": "",
+        "lpPositionLocker": ""
+      },
+      "poolKey": {
+        "currency0": "0x0000000000000000000000000000000000000000",
+        "currency1": "",
+        "fee": 3000,
+        "tickSpacing": 60,
+        "hooks": ""
+      }
+    }
+  ],
+  "ui": {
+    "aboutMarkdownPath": "./content/USER_GUIDE.md",
+    "nftMarketUrl": "https://opensea.io/",
+    "maxTokenImages": 80,
+    "pollAfterTxMs": 2500
+  }
+}
