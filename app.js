@@ -14,8 +14,6 @@ const REVERT_ERROR_IFACE = new ethers.Interface([
 const CORE_ABI = [
   "function tokensOfOwner(address holder) view returns (uint256[])",
   "function sealedTokensOfOwner(address holder) view returns (uint256[])",
-  "function unsealedTokensOfOwner(address holder) view returns (uint256[])",
-  "function renderContext(uint256 tokenId) view returns (tuple(uint256 tokenId,bytes32 seedHash,uint64 historicalMintCounter,uint64 renderSeed,uint16 macroStage,uint16 growthProgress,bool isSealed,uint32 visualStateNonce,uint32 blocksPerGrowthProgressSnapshot,tuple(uint16 genusIndex,uint16 epithetIndex,uint8 mutationClassId,uint8 paletteId,uint8 cyclePhaseId,uint8 layoutModeId) identity))",
   "function tokenURI(uint256 tokenId) view returns (string)",
   "function seal(uint256[] tokenIds)",
   "function unseal(uint256[] tokenIds)",
@@ -1028,13 +1026,25 @@ function parsePlantNumberInput() {
 
 async function refreshNFTs() {
   state.nftImageLoadId += 1;
-  const ids = await state.contracts.coreRead.tokensOfOwner(state.account);
+  const [ids, sealedIds] = await Promise.all([
+    state.contracts.coreRead.tokensOfOwner(state.account),
+    state.contracts.coreRead.sealedTokensOfOwner(state.account)
+  ]);
+  const sealedSet = new Set(sealedIds.map((id) => id.toString()));
   const previous = new Map(state.tokens.map((item) => [item.tokenId, item]));
   state.tokens = ids.map((id) => {
     const tokenId = id.toString();
     const existing = previous.get(tokenId);
-    if (state.nftImagesPaused && existing) return { ...existing, loading: false, imageLoading: false, error: "" };
-    return { tokenId, loading: !state.nftImagesPaused };
+    const base = {
+      tokenId,
+      isSealed: sealedSet.has(tokenId),
+      imageLoading: false,
+      error: ""
+    };
+    if (state.nftImagesPaused && existing) {
+      return { ...base, image: existing.image, metadata: existing.metadata };
+    }
+    return base;
   });
   const currentIds = new Set(ids.map((id) => id.toString()));
   state.selectedTokenIds = new Set([...state.selectedTokenIds].filter((tokenId) => currentIds.has(tokenId)));
@@ -1042,46 +1052,13 @@ async function refreshNFTs() {
   updateSelectedTokenBox();
   updateNFTSubhead();
 
-  if (!state.nftImagesPaused) startNFTDetailLoad();
+  if (!state.nftImagesPaused) startNFTImageLoad();
 }
 
-function startNFTDetailLoad() {
-  loadNFTDetailsForCurrentTokens().catch((error) => {
+function startNFTImageLoad() {
+  loadNFTImagesForCurrentTokens().catch((error) => {
     showNotice(errorMessage(error), "error");
   });
-}
-
-async function loadNFTDetailsForCurrentTokens() {
-  const loadId = ++state.nftImageLoadId;
-  for (let i = 0; i < state.tokens.length; i++) {
-    if (state.nftImagesPaused || loadId !== state.nftImageLoadId) return;
-    const item = state.tokens[i];
-    if (!item || item.context) {
-      if (item) item.loading = false;
-      continue;
-    }
-    try {
-      item.loading = true;
-      renderNFTGrid();
-      const ctx = await state.contracts.coreRead.renderContext(item.tokenId);
-      if (state.nftImagesPaused || loadId !== state.nftImageLoadId) {
-        item.loading = false;
-        renderNFTGrid();
-        updateNFTSubhead();
-        return;
-      }
-      item.context = normalizeContext(ctx);
-      item.loading = false;
-    } catch (error) {
-      item.loading = false;
-      item.error = errorMessage(error);
-    }
-    renderNFTGrid();
-    updateSelectedTokenBox();
-  }
-
-  updateNFTSubhead();
-  if (!state.nftImagesPaused && loadId === state.nftImageLoadId) loadNFTImagesForCurrentTokens();
 }
 
 async function loadNFTImagesForCurrentTokens() {
@@ -1114,25 +1091,6 @@ async function loadNFTImagesForCurrentTokens() {
   updateNFTSubhead();
 }
 
-function normalizeContext(ctx) {
-  return {
-    tokenId: ctx.tokenId.toString(),
-    macroStage: Number(ctx.macroStage),
-    growthProgress: Number(ctx.growthProgress),
-    isSealed: Boolean(ctx.isSealed),
-    visualStateNonce: Number(ctx.visualStateNonce),
-    renderSeed: ctx.renderSeed.toString(),
-    seedHash: ctx.seedHash,
-    identity: {
-      genusIndex: Number(ctx.identity.genusIndex),
-      epithetIndex: Number(ctx.identity.epithetIndex),
-      mutationClassId: Number(ctx.identity.mutationClassId),
-      paletteId: Number(ctx.identity.paletteId),
-      cyclePhaseId: Number(ctx.identity.cyclePhaseId)
-    }
-  };
-}
-
 function renderNFTGrid() {
   const visible = visibleTokens();
 
@@ -1156,15 +1114,9 @@ function renderNFTGrid() {
 }
 
 function renderNFTCard(item) {
-  const ctx = item.context;
-  const metadata = item.metadata || {};
   const selected = state.selectedTokenIds.has(item.tokenId);
-  const sealed = ctx?.isSealed;
-  const species = attr(metadata, "Species") || `Genus ${ctx?.identity?.genusIndex ?? "-"}`;
-  const mutation = attr(metadata, "Mutation Class") || `Mutation ${ctx?.identity?.mutationClassId ?? "-"}`;
-  const palette = attr(metadata, "Palette") || `Palette ${ctx?.identity?.paletteId ?? "-"}`;
-  const stage = ctx ? `${ctx.macroStage}/${ctx.growthProgress}` : "-";
-  const stateBadge = ctx ? (sealed ? "Sealed" : "Unsealed") : (state.nftImagesPaused ? "Paused" : "Loading");
+  const sealed = item.isSealed === true;
+  const stateBadge = sealed ? "Sealed" : "Unsealed";
   const art = item.image
     ? `<img src="${escapeAttr(item.image)}" loading="lazy" alt="OnePlant #${item.tokenId}">`
     : `<span>${nftArtStatus(item)}</span>`;
@@ -1180,12 +1132,6 @@ function renderNFTCard(item) {
           <span>OP #${item.tokenId}</span>
           <span class="badge ${sealed ? "sealed" : ""}">${stateBadge}</span>
         </div>
-        <div class="traits">
-          <span>Stage <strong>${stage}</strong></span>
-          <span>Style <strong>${escapeHtml(mutation)}</strong></span>
-          <span>Species <strong>${escapeHtml(species)}</strong></span>
-          <span>Palette <strong>${escapeHtml(palette)}</strong></span>
-        </div>
         ${error}
       </div>
     </article>
@@ -1194,7 +1140,7 @@ function renderNFTCard(item) {
 
 function nftArtStatus(item) {
   if (state.nftImagesPaused) return "NFT Paused";
-  if (item.loading || item.imageLoading) return "Loading NFT";
+  if (item.imageLoading) return "Loading NFT";
   return "NFT Pending";
 }
 
@@ -1205,14 +1151,14 @@ function toggleNFTImages() {
   renderNFTGrid();
   if (state.nftImagesPaused) {
     state.nftImageLoadId += 1;
-    state.tokens = state.tokens.map((item) => ({ ...item, loading: false, imageLoading: false }));
+    state.tokens = state.tokens.map((item) => ({ ...item, imageLoading: false }));
     renderNFTGrid();
     updateNFTSubhead();
     showNotice("NFT loading paused.", "info");
     return;
   }
   showNotice("NFT loading resumed.", "info");
-  startNFTDetailLoad();
+  startNFTImageLoad();
 }
 
 function updateNFTImageToggle() {
@@ -1223,7 +1169,7 @@ function updateNFTImageToggle() {
 }
 
 function updateNFTSubhead() {
-  const sealed = state.tokens.filter((item) => item.context?.isSealed).length;
+  const sealed = state.tokens.filter((item) => item.isSealed).length;
   const loadedImages = state.tokens.filter((item) => item.image).length;
   const previewLabel = `preview${loadedImages === 1 ? "" : "s"}`;
   const suffix = state.nftImagesPaused ? ` NFT loading paused, ${loadedImages} ${previewLabel}.` : ` ${loadedImages} NFT ${previewLabel}.`;
@@ -1247,8 +1193,8 @@ function renderEmptyWallet() {
 
 function visibleTokens() {
   return state.tokens.filter((item) => {
-    if (state.filter === "sealed") return item.context?.isSealed === true;
-    if (state.filter === "unsealed") return item.context?.isSealed === false;
+    if (state.filter === "sealed") return item.isSealed === true;
+    if (state.filter === "unsealed") return item.isSealed === false;
     return true;
   });
 }
@@ -1272,9 +1218,8 @@ function clearSelection() {
 
 function updateSelectedTokenBox() {
   const selected = state.tokens.filter((token) => state.selectedTokenIds.has(token.tokenId));
-  const loaded = selected.filter((token) => token.context);
-  const sealed = loaded.filter((token) => token.context.isSealed);
-  const unsealed = loaded.filter((token) => !token.context.isSealed);
+  const sealed = selected.filter((token) => token.isSealed);
+  const unsealed = selected.filter((token) => !token.isSealed);
   if (!selected.length) {
     els.selectedTokenLabel.textContent = "No OP selected";
     els.selectedTokenBox.innerHTML = `<span>Choose one or more cards from your wallet.</span>`;
@@ -1284,12 +1229,11 @@ function updateSelectedTokenBox() {
     els.batchUnsealButton.disabled = true;
     return;
   }
-  const pending = selected.length - loaded.length;
   const previewIds = selected.slice(0, 8).map((token) => `#${token.tokenId}`).join(", ");
   const overflow = selected.length > 8 ? `, and ${selected.length - 8} more` : "";
   els.selectedTokenLabel.textContent = `${selected.length} OP selected`;
   els.selectedTokenBox.innerHTML = `
-    <strong>${selected.length} selected - ${sealed.length} sealed, ${unsealed.length} unsealed${pending ? `, ${pending} loading` : ""}</strong>
+    <strong>${selected.length} selected - ${sealed.length} sealed, ${unsealed.length} unsealed</strong>
     <span>${previewIds}${overflow}</span>
   `;
   els.selectVisibleButton.disabled = state.busy || !state.account || visibleTokens().length === 0;
@@ -1301,7 +1245,7 @@ function updateSelectedTokenBox() {
 async function batchSealOrUnseal(mode) {
   const isSeal = mode === "seal";
   const selected = state.tokens.filter((token) => state.selectedTokenIds.has(token.tokenId));
-  const targets = selected.filter((token) => token.context && (isSeal ? !token.context.isSealed : token.context.isSealed));
+  const targets = selected.filter((token) => isSeal ? !token.isSealed : token.isSealed);
   if (!targets.length) {
     showNotice(`No selected ${isSeal ? "unsealed" : "sealed"} OP cards are ready.`, "error");
     return;
@@ -1550,11 +1494,6 @@ function decodeBase64(value) {
   const binary = atob(value);
   const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
   return new TextDecoder().decode(bytes);
-}
-
-function attr(metadata, traitType) {
-  const found = (metadata.attributes || []).find((item) => item.trait_type === traitType);
-  return found ? String(found.value) : "";
 }
 
 function updateContractLinks() {
