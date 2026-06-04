@@ -92,6 +92,7 @@ const els = {
   configPanel: document.getElementById("configPanel"),
   aboutContent: document.getElementById("aboutContent"),
   aboutStatus: document.getElementById("aboutStatus"),
+  externalLinkTabButton: document.getElementById("externalLinkTabButton"),
   networkSelect: document.getElementById("networkSelect"),
   switchNetworkButton: document.getElementById("switchNetworkButton"),
   connectButton: document.getElementById("connectButton"),
@@ -189,6 +190,7 @@ async function main() {
   populateNetworks();
   bindUI();
   selectInitialNetwork();
+  applyConfiguredLabels();
   applyNetworkUI();
   const requestedTab = new URLSearchParams(window.location.search).get("tab");
   renderEmptyWallet();
@@ -206,7 +208,11 @@ function bindUI() {
   els.tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       if (button.dataset.tab === "nftMarket") {
-        openNFTMarket();
+        openConfiguredExternalUrl("nftMarketUrl", "NFT Market", "https://opensea.io/");
+        return;
+      }
+      if (button.dataset.tab === "externalLink") {
+        openConfiguredExternalUrl("externalTabUrl", "External link", "https://xxx");
         return;
       }
       switchTab(button.dataset.tab);
@@ -340,14 +346,21 @@ function isKnownTab(tab) {
   return tab === "home" || tab === "operations" || tab === "planting" || tab === "about" || tab === "config";
 }
 
-function openNFTMarket() {
+function openConfiguredExternalUrl(configKey, label, fallbackUrl) {
   const network = selectedNetwork();
-  const configuredUrl = network?.nftMarketUrl || state.config.ui?.nftMarketUrl || "https://opensea.io/";
+  const configuredUrl = network?.[configKey] || state.config.ui?.[configKey] || fallbackUrl;
   try {
     const url = new URL(configuredUrl, window.location.href);
     window.open(url.href, "_blank", "noopener,noreferrer");
   } catch (_) {
-    showNotice("NFT Market URL is not configured correctly.", "error");
+    showNotice(`${label} URL is not configured correctly.`, "error");
+  }
+}
+
+function applyConfiguredLabels() {
+  if (els.externalLinkTabButton) {
+    const network = selectedNetwork();
+    els.externalLinkTabButton.textContent = network?.externalTabLabel || state.config.ui?.externalTabLabel || "External";
   }
 }
 
@@ -686,6 +699,7 @@ function applyNetworkUI() {
   els.refreshButton.disabled = !configured || !state.account || state.busy;
   els.plantingRefreshButton.disabled = !isPlantingConfigured(network) || state.busy;
   els.swapButton.disabled = !configured || !state.account || state.busy;
+  applyConfiguredLabels();
   updateContractLinks();
   updateNFTImageToggle();
   applySwapLabels();
