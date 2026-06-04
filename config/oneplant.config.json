@@ -38,7 +38,7 @@
   "ui": {
     "aboutMarkdownPath": "./content/USER_GUIDE.md",
     "nftMarketUrl": "https://opensea.io/collection/oneplant",
-    "maxTokenImages": 100,
+    "maxTokenImages": 300,
     "pollAfterTxMs": 2500
   }
 }
