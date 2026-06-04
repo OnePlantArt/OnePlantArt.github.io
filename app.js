@@ -1029,16 +1029,47 @@ function parsePlantNumberInput() {
 async function refreshNFTs() {
   state.nftImageLoadId += 1;
   const ids = await state.contracts.coreRead.tokensOfOwner(state.account);
-  state.tokens = ids.map((id) => ({ tokenId: id.toString(), loading: true }));
+  const previous = new Map(state.tokens.map((item) => [item.tokenId, item]));
+  state.tokens = ids.map((id) => {
+    const tokenId = id.toString();
+    const existing = previous.get(tokenId);
+    if (state.nftImagesPaused && existing) return { ...existing, loading: false, imageLoading: false, error: "" };
+    return { tokenId, loading: !state.nftImagesPaused };
+  });
   const currentIds = new Set(ids.map((id) => id.toString()));
   state.selectedTokenIds = new Set([...state.selectedTokenIds].filter((tokenId) => currentIds.has(tokenId)));
   renderNFTGrid();
   updateSelectedTokenBox();
+  updateNFTSubhead();
 
+  if (!state.nftImagesPaused) startNFTDetailLoad();
+}
+
+function startNFTDetailLoad() {
+  loadNFTDetailsForCurrentTokens().catch((error) => {
+    showNotice(errorMessage(error), "error");
+  });
+}
+
+async function loadNFTDetailsForCurrentTokens() {
+  const loadId = ++state.nftImageLoadId;
   for (let i = 0; i < state.tokens.length; i++) {
+    if (state.nftImagesPaused || loadId !== state.nftImageLoadId) return;
     const item = state.tokens[i];
+    if (!item || item.context) {
+      if (item) item.loading = false;
+      continue;
+    }
     try {
+      item.loading = true;
+      renderNFTGrid();
       const ctx = await state.contracts.coreRead.renderContext(item.tokenId);
+      if (state.nftImagesPaused || loadId !== state.nftImageLoadId) {
+        item.loading = false;
+        renderNFTGrid();
+        updateNFTSubhead();
+        return;
+      }
       item.context = normalizeContext(ctx);
       item.loading = false;
     } catch (error) {
@@ -1050,7 +1081,7 @@ async function refreshNFTs() {
   }
 
   updateNFTSubhead();
-  if (!state.nftImagesPaused) loadNFTImagesForCurrentTokens();
+  if (!state.nftImagesPaused && loadId === state.nftImageLoadId) loadNFTImagesForCurrentTokens();
 }
 
 async function loadNFTImagesForCurrentTokens() {
@@ -1064,7 +1095,12 @@ async function loadNFTImagesForCurrentTokens() {
       item.imageLoading = true;
       renderNFTGrid();
       const tokenUri = await state.contracts.coreRead.tokenURI(item.tokenId);
-      if (state.nftImagesPaused || loadId !== state.nftImageLoadId) return;
+      if (state.nftImagesPaused || loadId !== state.nftImageLoadId) {
+        item.imageLoading = false;
+        renderNFTGrid();
+        updateNFTSubhead();
+        return;
+      }
       item.metadata = parseTokenURI(tokenUri);
       item.image = item.metadata?.image || "";
       item.imageLoading = false;
@@ -1128,6 +1164,7 @@ function renderNFTCard(item) {
   const mutation = attr(metadata, "Mutation Class") || `Mutation ${ctx?.identity?.mutationClassId ?? "-"}`;
   const palette = attr(metadata, "Palette") || `Palette ${ctx?.identity?.paletteId ?? "-"}`;
   const stage = ctx ? `${ctx.macroStage}/${ctx.growthProgress}` : "-";
+  const stateBadge = ctx ? (sealed ? "Sealed" : "Unsealed") : (state.nftImagesPaused ? "Paused" : "Loading");
   const art = item.image
     ? `<img src="${escapeAttr(item.image)}" loading="lazy" alt="OnePlant #${item.tokenId}">`
     : `<span>${nftArtStatus(item)}</span>`;
@@ -1141,7 +1178,7 @@ function renderNFTCard(item) {
       <div class="nft-meta">
         <div class="nft-title">
           <span>OP #${item.tokenId}</span>
-          <span class="badge ${sealed ? "sealed" : ""}">${ctx ? (sealed ? "Sealed" : "Unsealed") : "Loading"}</span>
+          <span class="badge ${sealed ? "sealed" : ""}">${stateBadge}</span>
         </div>
         <div class="traits">
           <span>Stage <strong>${stage}</strong></span>
@@ -1156,10 +1193,9 @@ function renderNFTCard(item) {
 }
 
 function nftArtStatus(item) {
-  if (item.loading) return "Loading OP";
-  if (state.nftImagesPaused) return "SVG Paused";
-  if (item.imageLoading) return "Loading SVG";
-  return "SVG Pending";
+  if (state.nftImagesPaused) return "NFT Paused";
+  if (item.loading || item.imageLoading) return "Loading NFT";
+  return "NFT Pending";
 }
 
 function toggleNFTImages() {
@@ -1169,11 +1205,14 @@ function toggleNFTImages() {
   renderNFTGrid();
   if (state.nftImagesPaused) {
     state.nftImageLoadId += 1;
-    showNotice("SVG image loading paused.", "info");
+    state.tokens = state.tokens.map((item) => ({ ...item, loading: false, imageLoading: false }));
+    renderNFTGrid();
+    updateNFTSubhead();
+    showNotice("NFT loading paused.", "info");
     return;
   }
-  showNotice("SVG image loading resumed.", "info");
-  loadNFTImagesForCurrentTokens();
+  showNotice("NFT loading resumed.", "info");
+  startNFTDetailLoad();
 }
 
 function updateNFTImageToggle() {
@@ -1187,7 +1226,7 @@ function updateNFTSubhead() {
   const sealed = state.tokens.filter((item) => item.context?.isSealed).length;
   const loadedImages = state.tokens.filter((item) => item.image).length;
   const previewLabel = `preview${loadedImages === 1 ? "" : "s"}`;
-  const suffix = state.nftImagesPaused ? ` SVG paused, ${loadedImages} ${previewLabel}.` : ` ${loadedImages} SVG ${previewLabel}.`;
+  const suffix = state.nftImagesPaused ? ` NFT loading paused, ${loadedImages} ${previewLabel}.` : ` ${loadedImages} NFT ${previewLabel}.`;
   els.nftSubhead.textContent = `${state.tokens.length} OP loaded, ${sealed} sealed.${suffix}`;
 }
 
