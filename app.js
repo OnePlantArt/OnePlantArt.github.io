@@ -119,6 +119,7 @@ const els = {
   paidPlantButton: document.getElementById("paidPlantButton"),
   nftSubhead: document.getElementById("nftSubhead"),
   nftGrid: document.getElementById("nftGrid"),
+  toggleNftImagesButton: document.getElementById("toggleNftImagesButton"),
   selectVisibleButton: document.getElementById("selectVisibleButton"),
   clearSelectionButton: document.getElementById("clearSelectionButton"),
   selectedTokenLabel: document.getElementById("selectedTokenLabel"),
@@ -161,6 +162,8 @@ const state = {
   contracts: {},
   tokens: [],
   selectedTokenIds: new Set(),
+  nftImagesPaused: false,
+  nftImageLoadId: 0,
   filter: "all",
   swapSide: "buy",
   manualMinOut: false,
@@ -253,6 +256,7 @@ function bindUI() {
   els.saveRpcButton.addEventListener("click", saveCustomRpc);
   els.testRpcButton.addEventListener("click", testCurrentRpc);
   els.clearRpcButton.addEventListener("click", clearCustomRpc);
+  els.toggleNftImagesButton.addEventListener("click", toggleNFTImages);
   els.selectVisibleButton.addEventListener("click", selectVisibleTokens);
   els.clearSelectionButton.addEventListener("click", clearSelection);
   els.batchSealButton.addEventListener("click", () => batchSealOrUnseal("seal"));
@@ -685,6 +689,7 @@ function applyNetworkUI() {
   els.plantingRefreshButton.disabled = !isPlantingConfigured(network) || state.busy;
   els.swapButton.disabled = !configured || !state.account || state.busy;
   updateContractLinks();
+  updateNFTImageToggle();
   applySwapLabels();
   updateSelectedTokenBox();
   if (state.activeTab === "config") renderRpcConfig();
@@ -1022,8 +1027,8 @@ function parsePlantNumberInput() {
 }
 
 async function refreshNFTs() {
+  state.nftImageLoadId += 1;
   const ids = await state.contracts.coreRead.tokensOfOwner(state.account);
-  const maxImages = Number(state.config.ui?.maxTokenImages || 80);
   state.tokens = ids.map((id) => ({ tokenId: id.toString(), loading: true }));
   const currentIds = new Set(ids.map((id) => id.toString()));
   state.selectedTokenIds = new Set([...state.selectedTokenIds].filter((tokenId) => currentIds.has(tokenId)));
@@ -1035,11 +1040,6 @@ async function refreshNFTs() {
     try {
       const ctx = await state.contracts.coreRead.renderContext(item.tokenId);
       item.context = normalizeContext(ctx);
-      if (i < maxImages) {
-        const tokenUri = await state.contracts.coreRead.tokenURI(item.tokenId);
-        item.metadata = parseTokenURI(tokenUri);
-        item.image = item.metadata?.image || "";
-      }
       item.loading = false;
     } catch (error) {
       item.loading = false;
@@ -1049,8 +1049,33 @@ async function refreshNFTs() {
     updateSelectedTokenBox();
   }
 
-  const sealed = state.tokens.filter((item) => item.context?.isSealed).length;
-  els.nftSubhead.textContent = `${state.tokens.length} OP loaded, ${sealed} sealed.`;
+  updateNFTSubhead();
+  if (!state.nftImagesPaused) loadNFTImagesForCurrentTokens();
+}
+
+async function loadNFTImagesForCurrentTokens() {
+  const loadId = ++state.nftImageLoadId;
+  const maxImages = Number(state.config.ui?.maxTokenImages || 80);
+  for (let i = 0; i < state.tokens.length && i < maxImages; i++) {
+    if (state.nftImagesPaused || loadId !== state.nftImageLoadId) return;
+    const item = state.tokens[i];
+    if (!item || item.image || item.imageLoading) continue;
+    try {
+      item.imageLoading = true;
+      renderNFTGrid();
+      const tokenUri = await state.contracts.coreRead.tokenURI(item.tokenId);
+      if (state.nftImagesPaused || loadId !== state.nftImageLoadId) return;
+      item.metadata = parseTokenURI(tokenUri);
+      item.image = item.metadata?.image || "";
+      item.imageLoading = false;
+    } catch (error) {
+      item.imageLoading = false;
+      item.error = errorMessage(error);
+    }
+    renderNFTGrid();
+    updateSelectedTokenBox();
+  }
+  updateNFTSubhead();
 }
 
 function normalizeContext(ctx) {
@@ -1105,7 +1130,7 @@ function renderNFTCard(item) {
   const stage = ctx ? `${ctx.macroStage}/${ctx.growthProgress}` : "-";
   const art = item.image
     ? `<img src="${escapeAttr(item.image)}" loading="lazy" alt="OnePlant #${item.tokenId}">`
-    : `<span>${item.loading ? "Loading SVG" : "No SVG"}</span>`;
+    : `<span>${nftArtStatus(item)}</span>`;
   const error = item.error ? `<div class="badge">${escapeHtml(item.error.slice(0, 44))}</div>` : "";
   return `
     <article class="nft-card ${selected ? "selected" : ""}" data-token-id="${item.tokenId}" role="button" tabindex="0" aria-pressed="${selected ? "true" : "false"}">
@@ -1130,6 +1155,42 @@ function renderNFTCard(item) {
   `;
 }
 
+function nftArtStatus(item) {
+  if (item.loading) return "Loading OP";
+  if (state.nftImagesPaused) return "SVG Paused";
+  if (item.imageLoading) return "Loading SVG";
+  return "SVG Pending";
+}
+
+function toggleNFTImages() {
+  state.nftImagesPaused = !state.nftImagesPaused;
+  updateNFTImageToggle();
+  updateNFTSubhead();
+  renderNFTGrid();
+  if (state.nftImagesPaused) {
+    state.nftImageLoadId += 1;
+    showNotice("SVG image loading paused.", "info");
+    return;
+  }
+  showNotice("SVG image loading resumed.", "info");
+  loadNFTImagesForCurrentTokens();
+}
+
+function updateNFTImageToggle() {
+  if (!els.toggleNftImagesButton) return;
+  els.toggleNftImagesButton.textContent = state.nftImagesPaused ? "Load NFT" : "Pause NFT";
+  els.toggleNftImagesButton.setAttribute("aria-pressed", state.nftImagesPaused ? "true" : "false");
+  els.toggleNftImagesButton.classList.toggle("active", state.nftImagesPaused);
+}
+
+function updateNFTSubhead() {
+  const sealed = state.tokens.filter((item) => item.context?.isSealed).length;
+  const loadedImages = state.tokens.filter((item) => item.image).length;
+  const previewLabel = `preview${loadedImages === 1 ? "" : "s"}`;
+  const suffix = state.nftImagesPaused ? ` SVG paused, ${loadedImages} ${previewLabel}.` : ` ${loadedImages} SVG ${previewLabel}.`;
+  els.nftSubhead.textContent = `${state.tokens.length} OP loaded, ${sealed} sealed.${suffix}`;
+}
+
 function renderEmptyWallet() {
   els.walletMetric.textContent = state.account ? shortAddress(state.account) : "Not connected";
   els.ethMetric.textContent = "-";
@@ -1140,6 +1201,7 @@ function renderEmptyWallet() {
   els.nftGrid.innerHTML = `<div class="empty-state">${state.account ? "No OP loaded." : "No wallet connected."}</div>`;
   state.tokens = [];
   state.selectedTokenIds.clear();
+  updateNFTImageToggle();
   updateSelectedTokenBox();
   updatePlantingControls();
 }
