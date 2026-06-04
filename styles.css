@@ -721,7 +721,8 @@ input:focus {
 }
 
 .chip.active,
-.segmented button.active {
+.segmented button.active,
+#toggleNftImagesButton.active {
   background: #e5f3eb;
   border-color: var(--accent);
   color: #145b3c;
