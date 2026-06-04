@@ -38,7 +38,9 @@
   "ui": {
     "aboutMarkdownPath": "./content/USER_GUIDE.md",
     "nftMarketUrl": "https://opensea.io/collection/oneplant",
-    "maxTokenImages": 300,
+    "externalTabLabel": "Official X",
+    "externalTabUrl": "https://x.com/onchain_artists",
+    "maxTokenImages": 1000,
     "pollAfterTxMs": 2500
   }
 }
