@@ -42,8 +42,6 @@ const PLANTING_SALE_ABI = [
 ];
 
 const HOOK_ABI = [
-  "function availableReleasedUP() view returns (uint256)",
-  "function releasedUP() view returns (uint256)",
   "function quoteNativeTeamFee(uint256 grossNative) pure returns (uint256 teamFeeNative,uint256 netNativeForSwap)",
   "function quoteUPBurnFee(uint256 grossUP) pure returns (uint256 burnFeeUP,uint256 netUP)"
 ];
@@ -101,7 +99,6 @@ const els = {
   ethMetric: document.getElementById("ethMetric"),
   upMetric: document.getElementById("upMetric"),
   opMetric: document.getElementById("opMetric"),
-  releaseMetric: document.getElementById("releaseMetric"),
   notice: document.getElementById("notice"),
   plantingNotice: document.getElementById("plantingNotice"),
   plantingRefreshButton: document.getElementById("plantingRefreshButton"),
@@ -838,7 +835,7 @@ async function refreshAll() {
     setBusy(true, "Refreshing...");
     await ensureWalletOnSelectedNetwork();
     initContracts();
-    await Promise.all([refreshBalances(), refreshRelease()]);
+    await refreshBalances();
     await refreshPlanting();
     await refreshNFTs();
     showNotice("Wallet state refreshed.", "success");
@@ -871,15 +868,6 @@ async function refreshBalances() {
   els.ethMetric.textContent = `${trimNumber(ethers.formatEther(ethBalance), 5)} ETH`;
   els.upMetric.textContent = `${trimNumber(ethers.formatUnits(upBalance, 18), 4)} UP`;
   els.opMetric.textContent = `${tokenIds.length}`;
-}
-
-async function refreshRelease() {
-  try {
-    const available = await state.contracts.hookRead.availableReleasedUP();
-    els.releaseMetric.textContent = `${trimNumber(ethers.formatUnits(available, 18), 2)} UP`;
-  } catch (_) {
-    els.releaseMetric.textContent = "-";
-  }
 }
 
 async function refreshPlanting() {
@@ -1195,7 +1183,6 @@ function renderEmptyWallet() {
   els.ethMetric.textContent = "-";
   els.upMetric.textContent = "-";
   els.opMetric.textContent = "-";
-  els.releaseMetric.textContent = "-";
   els.nftSubhead.textContent = state.account ? "Refresh to load OP cards." : "Connect wallet to load OP cards.";
   els.nftGrid.innerHTML = `<div class="empty-state">${state.account ? "No OP loaded." : "No wallet connected."}</div>`;
   state.tokens = [];
