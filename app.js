@@ -696,6 +696,7 @@ function applyNetworkUI() {
   els.refreshButton.disabled = !configured || !state.account || state.busy;
   els.plantingRefreshButton.disabled = !isPlantingConfigured(network) || state.busy;
   els.swapButton.disabled = !configured || !state.account || state.busy;
+  updateWalletConnectionUI();
   applyConfiguredLabels();
   updateContractLinks();
   updateNFTImageToggle();
@@ -719,16 +720,21 @@ async function connectWallet() {
     const network = selectedNetwork();
     if (!isNetworkConfigured(network)) throw new Error(`${network?.label || "Selected network"} is not configured.`);
     setBusy(true, "Connecting wallet...");
-  await window.ethereum.request({ method: "eth_requestAccounts" });
+    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+    state.account = accounts?.[0] || "";
+    if (!state.account) throw new Error("No wallet account was returned.");
+    updateWalletConnectionUI();
+    showNotice(`Wallet connected: ${shortAddress(state.account)}. Checking network...`, "success");
     state.provider = new ethers.BrowserProvider(window.ethereum);
     bindWalletEvents();
     await switchToSelectedNetwork();
     state.signer = await state.provider.getSigner();
     state.account = await state.signer.getAddress();
     initContracts();
-    await refreshAll();
+    updateWalletConnectionUI();
+    showNotice(`Wallet connected: ${shortAddress(state.account)}. Loading balances and OP cards...`, "success");
+    await refreshAll({ busyMessage: "", successMessage: "Wallet data loaded." });
     scheduleSwapQuote();
-    showNotice("Wallet connected.", "success");
   } catch (error) {
     showNotice(errorMessage(error), "error");
   } finally {
@@ -741,29 +747,42 @@ function bindWalletEvents() {
   if (state.walletEventsBound || !window.ethereum?.on) return;
   state.walletEventsBound = true;
   window.ethereum.on("accountsChanged", async (accounts) => {
-    state.account = accounts?.[0] || "";
-    if (!state.account) {
-      state.signer = null;
-      state.contracts = {};
-      renderEmptyWallet();
-      applyNetworkUI();
-      if (state.activeTab === "planting") await refreshPlanting();
-      return;
+    try {
+      state.account = accounts?.[0] || "";
+      if (!state.account) {
+        state.signer = null;
+        state.contracts = {};
+        renderEmptyWallet();
+        updateWalletConnectionUI();
+        applyNetworkUI();
+        showNotice("Wallet disconnected.", "info");
+        if (state.activeTab === "planting") await refreshPlanting();
+        return;
+      }
+      state.provider = new ethers.BrowserProvider(window.ethereum);
+      state.signer = await state.provider.getSigner();
+      state.account = await state.signer.getAddress();
+      initContracts();
+      updateWalletConnectionUI();
+      showNotice(`Wallet changed to ${shortAddress(state.account)}. Loading wallet data...`, "info");
+      await refreshAll({ busyMessage: "", successMessage: "Wallet data loaded." });
+      scheduleSwapQuote();
+    } catch (error) {
+      showNotice(errorMessage(error), "error");
     }
-    state.provider = new ethers.BrowserProvider(window.ethereum);
-    state.signer = await state.provider.getSigner();
-    state.account = await state.signer.getAddress();
-    initContracts();
-    await refreshAll();
-    scheduleSwapQuote();
   });
   window.ethereum.on("chainChanged", async () => {
-    if (!state.provider) return;
-    state.provider = new ethers.BrowserProvider(window.ethereum);
-    if (state.account) state.signer = await state.provider.getSigner();
-    initContracts();
-    await refreshAll();
-    scheduleSwapQuote();
+    try {
+      if (!state.provider) return;
+      showNotice("Network changed. Refreshing wallet data...", "info");
+      state.provider = new ethers.BrowserProvider(window.ethereum);
+      if (state.account) state.signer = await state.provider.getSigner();
+      initContracts();
+      await refreshAll({ busyMessage: "", successMessage: "Wallet data loaded." });
+      scheduleSwapQuote();
+    } catch (error) {
+      showNotice(errorMessage(error), "error");
+    }
   });
 }
 
@@ -824,21 +843,23 @@ function initContracts() {
   }
 }
 
-async function refreshAll() {
+async function refreshAll(options = {}) {
   if (!state.account) {
     renderEmptyWallet();
     return;
   }
+  const busyMessage = options.busyMessage ?? "Refreshing...";
+  const successMessage = options.successMessage ?? "Wallet state refreshed.";
   const network = selectedNetwork();
   if (!isNetworkConfigured(network)) return;
   try {
-    setBusy(true, "Refreshing...");
+    setBusy(true, busyMessage);
     await ensureWalletOnSelectedNetwork();
     initContracts();
     await refreshBalances();
     await refreshPlanting();
     await refreshNFTs();
-    showNotice("Wallet state refreshed.", "success");
+    if (successMessage) showNotice(successMessage, "success");
   } catch (error) {
     showNotice(errorMessage(error), "error");
   } finally {
@@ -1188,6 +1209,7 @@ function renderEmptyWallet() {
   state.tokens = [];
   state.selectedTokenIds.clear();
   updateNFTImageToggle();
+  updateWalletConnectionUI();
   updateSelectedTokenBox();
   updatePlantingControls();
 }
@@ -1529,13 +1551,22 @@ function txLink(hash) {
 
 function setBusy(busy, message = "") {
   state.busy = busy;
-  els.connectButton.disabled = busy;
+  els.connectButton.disabled = busy || !isNetworkConfigured(selectedNetwork());
   els.switchNetworkButton.disabled = busy || !state.account;
   els.refreshButton.disabled = busy || !state.account;
   els.swapButton.disabled = busy || !state.account || !isNetworkConfigured(selectedNetwork());
+  updateWalletConnectionUI();
   updateSelectedTokenBox();
   updatePlantingControls();
   if (message) showNotice(message, "info");
+}
+
+function updateWalletConnectionUI() {
+  const connected = Boolean(state.account);
+  els.connectButton.classList.toggle("connected", connected);
+  els.connectButton.textContent = connected ? `Connected ${shortAddress(state.account)}` : "Connect Wallet";
+  els.connectButton.title = connected ? `Wallet connected: ${state.account}` : "Connect wallet";
+  els.connectButton.setAttribute("aria-label", connected ? `Wallet connected: ${state.account}` : "Connect wallet");
 }
 
 function showNotice(message, type = "info") {
