@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OnePlantArt</title>
-    <link rel="stylesheet" href="./styles.css?v=20260608-wallet-status">
+    <link rel="stylesheet" href="./styles.css?v=20260608-avatar-pan-y-15">
   </head>
   <body>
     <header class="topbar">
@@ -12,7 +12,7 @@
         <div class="brand-mark" aria-hidden="true">OP</div>
         <div>
           <h1>OnePlant</h1>
-          <p>Ethereum's first fully on-chain growing plant system built with 100+ Solidity renderer contracts</p>
+          <p>Living plant cards on Ethereum</p>
         </div>
       </div>
       <div class="top-actions">
@@ -29,7 +29,7 @@
       <section class="tabbar" role="tablist" aria-label="OnePlant website sections">
         <button id="homeTabButton" class="tab-button active" data-tab="home" type="button" role="tab" aria-selected="true">Home</button>
         <button id="operationsTabButton" class="tab-button" data-tab="operations" type="button" role="tab" aria-selected="false">Dapp</button>
-        <button id="plantingTabButton" class="tab-button" data-tab="planting" type="button" role="tab" aria-selected="false">Planting</button>
+        <button id="avatarTabButton" class="tab-button" data-tab="avatar" type="button" role="tab" aria-selected="false">Avatar</button>
         <button id="configTabButton" class="tab-button" data-tab="config" type="button" role="tab" aria-selected="false">Config</button>
         <button id="aboutTabButton" class="tab-button" data-tab="about" type="button" role="tab" aria-selected="false">About</button>
         <button id="nftMarketTabButton" class="tab-button" data-tab="nftMarket" type="button" role="tab" aria-selected="false">NFT Market</button>
@@ -40,7 +40,7 @@
         <section class="home-hero" aria-label="OnePlantArt introduction">
           <img class="home-hero-image" src="./content/1-pure-plant.svg" alt="A sealed OnePlantArt specimen card" fetchpriority="high">
           <div class="home-hero-copy">
-            <p class="home-kicker">Fully on-chain living plant cards</p>
+            <p class="home-kicker">Ethereum's first fully on-chain growing plant system built with 100+ Solidity renderer contracts</p>
             <h1>OnePlantArt</h1>
             <p class="home-lede">A time-grown botanical art system capped at 9,009 OP cards, with live supply expected to float around 5,000-8,000 as UP dust and burn mechanics shape the ecosystem.</p>
             <div class="home-actions">
@@ -95,7 +95,7 @@
           <article>
             <p class="home-kicker">Market primitive</p>
             <h3>Built around Uniswap V4 Hook mechanics.</h3>
-            <p>Official swap flow uses a Uniswap V4 Hook path for UP fee logic, release pacing, burn behavior, and OP mint integration alongside the planting sale.</p>
+            <p>Official swap flow uses a Uniswap V4 Hook path for UP fee logic, release pacing, burn behavior, and OP mint integration after the completed planting sale.</p>
           </article>
         </section>
 
@@ -259,6 +259,76 @@
         </div>
       </section>
 
+      <section id="avatarPanel" class="tab-panel" role="tabpanel" aria-labelledby="avatarTabButton" hidden>
+        <section id="avatarNotice" class="notice" hidden></section>
+
+        <div class="avatar-workbench">
+          <section class="panel avatar-picker-panel">
+            <div class="panel-head">
+              <div>
+                <h2>Avatar</h2>
+                <p id="avatarSubhead">Connect wallet to load OP cards.</p>
+              </div>
+              <button id="avatarRefreshButton" class="secondary" type="button">Refresh OP List</button>
+            </div>
+
+            <div id="avatarTokenList" class="avatar-token-list">
+              <div class="empty-state">No wallet connected.</div>
+            </div>
+          </section>
+
+          <section class="panel avatar-studio-panel">
+            <div class="panel-head">
+              <div>
+                <h2 id="avatarSelectedLabel">No OP selected</h2>
+                <p id="avatarStatus">Choose one card to create a PNG avatar.</p>
+              </div>
+            </div>
+
+            <div class="avatar-studio-body">
+              <div id="avatarPreviewShell" class="avatar-preview-shell guide-on">
+                <canvas id="avatarCanvas" width="1024" height="1024" aria-label="OnePlant avatar preview"></canvas>
+                <div id="avatarPlaceholder" class="avatar-placeholder">Select an OP card</div>
+                <div class="avatar-circle-guide" aria-hidden="true"></div>
+              </div>
+
+              <div class="avatar-controls" aria-label="Avatar controls">
+                <div class="mode-switch" role="group" aria-label="Avatar cut mode">
+                  <button class="active" data-avatar-mode="core" type="button">Core</button>
+                  <button data-avatar-mode="card" type="button">Card</button>
+                  <button data-avatar-mode="specimen" type="button">Specimen</button>
+                </div>
+
+                <label class="field avatar-range-field">
+                  <span>Zoom</span>
+                  <input id="avatarZoomInput" type="range" min="45" max="180" value="80">
+                </label>
+
+                <label class="field avatar-range-field">
+                  <span>Pan X</span>
+                  <input id="avatarPanXInput" type="range" min="-35" max="35" value="0">
+                </label>
+
+                <label class="field avatar-range-field">
+                  <span>Pan Y</span>
+                  <input id="avatarPanYInput" type="range" min="-35" max="35" value="15">
+                </label>
+
+                <label class="check-field">
+                  <input id="avatarGuideInput" type="checkbox" checked>
+                  <span>Circle guide</span>
+                </label>
+
+                <div class="avatar-actions">
+                  <button id="avatarResetButton" class="secondary" type="button">Reset Cut</button>
+                  <button id="avatarDownloadButton" type="button" disabled>Download PNG</button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </section>
+
       <section id="plantingPanel" class="tab-panel" role="tabpanel" aria-labelledby="plantingTabButton" hidden>
         <section id="plantingNotice" class="notice" hidden></section>
 
@@ -416,7 +486,7 @@
               <button id="clearRpcButton" class="secondary" type="button">Clear Custom RPC</button>
             </div>
             <div id="rpcStatus" class="quote-status">Using website RPC configuration.</div>
-            <p class="config-note">This changes website read calls such as balances, NFT loading, quotes, and planting status. Wallet-confirmed transactions are still sent by your wallet provider.</p>
+            <p class="config-note">This changes website read calls such as balances, NFT loading, and quotes. Wallet-confirmed transactions are still sent by your wallet provider.</p>
           </section>
         </article>
       </section>
@@ -432,6 +502,6 @@
       <span id="configStatus">Loading config...</span>
     </footer>
 
-    <script type="module" src="./app.js?v=20260608-wallet-status"></script>
+    <script type="module" src="./app.js?v=20260608-avatar-pan-y-15"></script>
   </body>
 </html>
