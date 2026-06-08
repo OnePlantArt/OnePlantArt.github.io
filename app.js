@@ -4,6 +4,19 @@ const NATIVE = "0x0000000000000000000000000000000000000000";
 const MAX_UINT128 = (1n << 128n) - 1n;
 const BPS_DENOMINATOR = 10000n;
 const CUSTOM_RPC_STORAGE_PREFIX = "oneplant.customRpcUrl.";
+const AVATAR_CANVAS_SIZE = 1024;
+const AVATAR_MIN_ZOOM = 0.45;
+const AVATAR_MIN_ZOOM_INPUT = "45";
+const AVATAR_DEFAULT_ZOOM = 0.8;
+const AVATAR_DEFAULT_ZOOM_INPUT = "80";
+const AVATAR_DEFAULT_PAN_Y = 15;
+const AVATAR_DEFAULT_PAN_Y_INPUT = "15";
+const AVATAR_MAX_ZOOM = 1.8;
+const AVATAR_PRESETS = {
+  core: { sourceRatio: 0.74, centerX: 0.5, centerY: 0.54 },
+  card: { sourceRatio: 0.96, centerX: 0.5, centerY: 0.5 },
+  specimen: { sourceRatio: 0.9, centerX: 0.5, centerY: 0.51 }
+};
 const REVERT_ERROR_IFACE = new ethers.Interface([
   "error Error(string)",
   "error Panic(uint256)",
@@ -85,6 +98,7 @@ const els = {
   tabButtons: Array.from(document.querySelectorAll(".tab-button")),
   homePanel: document.getElementById("homePanel"),
   operationsPanel: document.getElementById("operationsPanel"),
+  avatarPanel: document.getElementById("avatarPanel"),
   plantingPanel: document.getElementById("plantingPanel"),
   aboutPanel: document.getElementById("aboutPanel"),
   configPanel: document.getElementById("configPanel"),
@@ -100,6 +114,21 @@ const els = {
   upMetric: document.getElementById("upMetric"),
   opMetric: document.getElementById("opMetric"),
   notice: document.getElementById("notice"),
+  avatarNotice: document.getElementById("avatarNotice"),
+  avatarRefreshButton: document.getElementById("avatarRefreshButton"),
+  avatarSubhead: document.getElementById("avatarSubhead"),
+  avatarTokenList: document.getElementById("avatarTokenList"),
+  avatarSelectedLabel: document.getElementById("avatarSelectedLabel"),
+  avatarStatus: document.getElementById("avatarStatus"),
+  avatarPreviewShell: document.getElementById("avatarPreviewShell"),
+  avatarCanvas: document.getElementById("avatarCanvas"),
+  avatarPlaceholder: document.getElementById("avatarPlaceholder"),
+  avatarZoomInput: document.getElementById("avatarZoomInput"),
+  avatarPanXInput: document.getElementById("avatarPanXInput"),
+  avatarPanYInput: document.getElementById("avatarPanYInput"),
+  avatarGuideInput: document.getElementById("avatarGuideInput"),
+  avatarResetButton: document.getElementById("avatarResetButton"),
+  avatarDownloadButton: document.getElementById("avatarDownloadButton"),
   plantingNotice: document.getElementById("plantingNotice"),
   plantingRefreshButton: document.getElementById("plantingRefreshButton"),
   plantingStatusMetric: document.getElementById("plantingStatusMetric"),
@@ -171,6 +200,19 @@ const state = {
   quotedSide: "",
   quotedSlippageBps: 0,
   planting: null,
+  avatar: {
+    selectedTokenId: "",
+    mode: "core",
+    zoom: AVATAR_DEFAULT_ZOOM,
+    offsetX: 0,
+    offsetY: AVATAR_DEFAULT_PAN_Y,
+    requestId: 0,
+    loading: false,
+    metadata: null,
+    imageSource: "",
+    imageElement: null,
+    drag: null
+  },
   activeTab: "home",
   guideLoaded: false,
   busy: false,
@@ -258,6 +300,13 @@ function bindUI() {
   els.testRpcButton.addEventListener("click", testCurrentRpc);
   els.clearRpcButton.addEventListener("click", clearCustomRpc);
   els.toggleNftImagesButton.addEventListener("click", toggleNFTImages);
+  els.avatarRefreshButton.addEventListener("click", refreshAvatarInventory);
+  els.avatarResetButton.addEventListener("click", resetAvatarCut);
+  els.avatarDownloadButton.addEventListener("click", downloadAvatarPNG);
+  els.avatarGuideInput.addEventListener("change", updateAvatarGuide);
+  els.avatarZoomInput.addEventListener("input", updateAvatarFromControls);
+  els.avatarPanXInput.addEventListener("input", updateAvatarFromControls);
+  els.avatarPanYInput.addEventListener("input", updateAvatarFromControls);
   els.selectVisibleButton.addEventListener("click", selectVisibleTokens);
   els.clearSelectionButton.addEventListener("click", clearSelection);
   els.batchSealButton.addEventListener("click", () => batchSealOrUnseal("seal"));
@@ -286,14 +335,22 @@ function bindUI() {
     });
   });
 
-  document.querySelectorAll(".segmented button").forEach((button) => {
+  document.querySelectorAll(".swap-panel .segmented button").forEach((button) => {
     button.addEventListener("click", () => {
       state.swapSide = button.dataset.side;
-      document.querySelectorAll(".segmented button").forEach((item) => item.classList.toggle("active", item === button));
+      document.querySelectorAll(".swap-panel .segmented button").forEach((item) => item.classList.toggle("active", item === button));
       state.manualMinOut = false;
       clearQuoteSnapshot();
       applySwapLabels();
       scheduleSwapQuote();
+    });
+  });
+
+  document.querySelectorAll("[data-avatar-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.avatar.mode = button.dataset.avatarMode || "core";
+      document.querySelectorAll("[data-avatar-mode]").forEach((item) => item.classList.toggle("active", item === button));
+      drawAvatarCanvas();
     });
   });
 
@@ -309,6 +366,15 @@ function bindUI() {
     event.preventDefault();
     toggleTokenSelection(card.dataset.tokenId);
   });
+  els.avatarTokenList.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-avatar-token-id]");
+    if (!button) return;
+    selectAvatarToken(button.dataset.avatarTokenId);
+  });
+  els.avatarPreviewShell.addEventListener("pointerdown", startAvatarDrag);
+  els.avatarPreviewShell.addEventListener("pointermove", moveAvatarDrag);
+  els.avatarPreviewShell.addEventListener("pointerup", endAvatarDrag);
+  els.avatarPreviewShell.addEventListener("pointercancel", endAvatarDrag);
 }
 
 async function switchTab(tab) {
@@ -316,7 +382,7 @@ async function switchTab(tab) {
   const panels = {
     home: els.homePanel,
     operations: els.operationsPanel,
-    planting: els.plantingPanel,
+    avatar: els.avatarPanel,
     about: els.aboutPanel,
     config: els.configPanel
   };
@@ -335,12 +401,12 @@ async function switchTab(tab) {
   else url.searchParams.delete("tab");
   window.history.replaceState({}, "", url);
   if (state.activeTab === "about") await loadAboutGuide();
-  if (state.activeTab === "planting") await refreshPlanting();
   if (state.activeTab === "config") renderRpcConfig();
+  if (state.activeTab === "avatar") await renderAvatarWorkspace();
 }
 
 function isKnownTab(tab) {
-  return tab === "home" || tab === "operations" || tab === "planting" || tab === "about" || tab === "config";
+  return tab === "home" || tab === "operations" || tab === "avatar" || tab === "about" || tab === "config";
 }
 
 function openConfiguredExternalUrl(configKey, label, fallbackUrl) {
@@ -454,8 +520,6 @@ async function saveCustomRpc() {
     if (state.account) {
       await refreshAll();
       scheduleSwapQuote();
-    } else if (state.activeTab === "planting") {
-      await refreshPlanting();
     }
   } catch (error) {
     els.rpcStatus.textContent = errorMessage(error);
@@ -488,8 +552,6 @@ async function clearCustomRpc() {
     if (state.account) {
       await refreshAll();
       scheduleSwapQuote();
-    } else if (state.activeTab === "planting") {
-      await refreshPlanting();
     }
   } catch (error) {
     els.rpcStatus.textContent = errorMessage(error);
@@ -702,6 +764,7 @@ function applyNetworkUI() {
   updateNFTImageToggle();
   applySwapLabels();
   updateSelectedTokenBox();
+  updateAvatarControls();
   if (state.activeTab === "config") renderRpcConfig();
   if (!configured) {
     showNotice(`${label} has no complete contract configuration yet. Fill site/config/oneplant.config.json before using this network.`, "error");
@@ -756,7 +819,6 @@ function bindWalletEvents() {
         updateWalletConnectionUI();
         applyNetworkUI();
         showNotice("Wallet disconnected.", "info");
-        if (state.activeTab === "planting") await refreshPlanting();
         return;
       }
       state.provider = new ethers.BrowserProvider(window.ethereum);
@@ -857,7 +919,6 @@ async function refreshAll(options = {}) {
     await ensureWalletOnSelectedNetwork();
     initContracts();
     await refreshBalances();
-    await refreshPlanting();
     await refreshNFTs();
     if (successMessage) showNotice(successMessage, "success");
   } catch (error) {
@@ -1048,6 +1109,11 @@ function parsePlantNumberInput() {
 }
 
 async function refreshNFTs() {
+  await refreshTokenInventory();
+  if (!state.nftImagesPaused) startNFTImageLoad();
+}
+
+async function refreshTokenInventory() {
   state.nftImageLoadId += 1;
   const [ids, sealedIds] = await Promise.all([
     state.contracts.coreRead.tokensOfOwner(state.account),
@@ -1071,11 +1137,12 @@ async function refreshNFTs() {
   });
   const currentIds = new Set(ids.map((id) => id.toString()));
   state.selectedTokenIds = new Set([...state.selectedTokenIds].filter((tokenId) => currentIds.has(tokenId)));
+  if (state.avatar.selectedTokenId && !currentIds.has(state.avatar.selectedTokenId)) clearAvatarSelection();
   renderNFTGrid();
   updateSelectedTokenBox();
   updateNFTSubhead();
-
-  if (!state.nftImagesPaused) startNFTImageLoad();
+  renderAvatarTokenList();
+  updateAvatarControls();
 }
 
 function startNFTImageLoad() {
@@ -1102,7 +1169,7 @@ async function loadNFTImagesForCurrentTokens() {
         return;
       }
       item.metadata = parseTokenURI(tokenUri);
-      item.image = item.metadata?.image || "";
+      item.image = metadataImageSource(item.metadata);
       item.imageLoading = false;
     } catch (error) {
       item.imageLoading = false;
@@ -1208,10 +1275,13 @@ function renderEmptyWallet() {
   els.nftGrid.innerHTML = `<div class="empty-state">${state.account ? "No OP loaded." : "No wallet connected."}</div>`;
   state.tokens = [];
   state.selectedTokenIds.clear();
+  clearAvatarSelection();
   updateNFTImageToggle();
   updateWalletConnectionUI();
   updateSelectedTokenBox();
   updatePlantingControls();
+  renderAvatarTokenList();
+  updateAvatarControls();
 }
 
 function visibleTokens() {
@@ -1263,6 +1333,339 @@ function updateSelectedTokenBox() {
   els.clearSelectionButton.disabled = state.busy;
   els.batchSealButton.disabled = state.busy || !state.account || unsealed.length === 0;
   els.batchUnsealButton.disabled = state.busy || !state.account || sealed.length === 0;
+}
+
+async function renderAvatarWorkspace() {
+  renderAvatarTokenList();
+  updateAvatarControls();
+  updateAvatarGuide();
+  if (state.account && state.contracts.coreRead && state.tokens.length === 0) {
+    await refreshAvatarInventory();
+    return;
+  }
+  drawAvatarCanvas();
+}
+
+async function refreshAvatarInventory() {
+  if (!state.account) {
+    showAvatarNotice("Connect wallet to load your OP cards.", "info");
+    renderAvatarTokenList();
+    updateAvatarControls();
+    return;
+  }
+  try {
+    els.avatarRefreshButton.disabled = true;
+    setAvatarStatus("Loading OP list...");
+    await ensureWalletOnSelectedNetwork();
+    initContracts();
+    await refreshTokenInventory();
+    showAvatarNotice("OP list refreshed.", "success");
+  } catch (error) {
+    showAvatarNotice(errorMessage(error), "error");
+  } finally {
+    updateAvatarControls();
+  }
+}
+
+function renderAvatarTokenList() {
+  if (!els.avatarTokenList) return;
+  if (!state.account) {
+    els.avatarTokenList.innerHTML = `<div class="empty-state">No wallet connected.</div>`;
+    return;
+  }
+  if (!state.tokens.length) {
+    els.avatarTokenList.innerHTML = `<div class="empty-state">No OP loaded.</div>`;
+    return;
+  }
+  els.avatarTokenList.innerHTML = state.tokens.map((item) => {
+    const selected = item.tokenId === state.avatar.selectedTokenId;
+    const sealed = item.isSealed === true;
+    return `
+      <button class="avatar-token-row ${selected ? "selected" : ""}" data-avatar-token-id="${item.tokenId}" type="button" aria-pressed="${selected ? "true" : "false"}">
+        <span>OP #${escapeHtml(item.tokenId)}</span>
+        <span class="badge ${sealed ? "sealed" : ""}">${sealed ? "Sealed" : "Unsealed"}</span>
+      </button>
+    `;
+  }).join("");
+}
+
+async function selectAvatarToken(tokenId) {
+  const item = state.tokens.find((token) => token.tokenId === tokenId);
+  if (!item) return;
+  const requestId = ++state.avatar.requestId;
+  state.avatar.selectedTokenId = tokenId;
+  state.avatar.loading = true;
+  state.avatar.metadata = null;
+  state.avatar.imageSource = "";
+  state.avatar.imageElement = null;
+  renderAvatarTokenList();
+  updateAvatarControls();
+  drawAvatarCanvas();
+  setAvatarStatus(`Loading OP #${tokenId}...`);
+
+  try {
+    let metadata = item.metadata;
+    if (!metadata || !metadataImageSource(metadata)) {
+      const tokenUri = await state.contracts.coreRead.tokenURI(tokenId);
+      metadata = parseTokenURI(tokenUri);
+    }
+    const imageSource = metadataImageSource(metadata);
+    if (!imageSource) throw new Error("Selected OP metadata has no SVG image.");
+    const avatarImageSource = cleanAvatarImageSource(imageSource);
+    const imageElement = await loadImageElement(avatarImageSource);
+    if (requestId !== state.avatar.requestId) return;
+    item.metadata = metadata;
+    if (!state.nftImagesPaused) item.image = imageSource;
+    state.avatar.loading = false;
+    state.avatar.metadata = metadata;
+    state.avatar.imageSource = avatarImageSource;
+    state.avatar.imageElement = imageElement;
+    renderNFTGrid();
+    renderAvatarTokenList();
+    updateAvatarControls();
+    drawAvatarCanvas();
+    const permanence = item.isSealed
+      ? "Sealed avatar source is fixed."
+      : "Unsealed source can keep evolving; seal first for a permanent avatar.";
+    setAvatarStatus(`OP #${tokenId} ready. ${permanence}`);
+  } catch (error) {
+    if (requestId !== state.avatar.requestId) return;
+    state.avatar.loading = false;
+    state.avatar.imageElement = null;
+    updateAvatarControls();
+    drawAvatarCanvas();
+    setAvatarStatus("Avatar image failed to load.");
+    showAvatarNotice(errorMessage(error), "error");
+  }
+}
+
+function clearAvatarSelection() {
+  state.avatar.requestId += 1;
+  state.avatar.selectedTokenId = "";
+  state.avatar.loading = false;
+  state.avatar.metadata = null;
+  state.avatar.imageSource = "";
+  state.avatar.imageElement = null;
+  state.avatar.drag = null;
+  resetAvatarViewValues();
+  drawAvatarCanvas();
+}
+
+function updateAvatarControls() {
+  if (!els.avatarSubhead) return;
+  const selected = avatarSelectedToken();
+  const loadedLabel = state.tokens.length === 1 ? "OP card" : "OP cards";
+  els.avatarSubhead.textContent = state.account
+    ? `${state.tokens.length} ${loadedLabel} available.`
+    : "Connect wallet to load OP cards.";
+  els.avatarRefreshButton.disabled = state.busy || !state.account || !isNetworkConfigured(selectedNetwork());
+  els.avatarDownloadButton.disabled = !state.avatar.imageElement || state.avatar.loading;
+  els.avatarSelectedLabel.textContent = selected ? `OP #${selected.tokenId}` : "No OP selected";
+  els.avatarPreviewShell.classList.toggle("is-loading", state.avatar.loading);
+  els.avatarPreviewShell.classList.toggle("has-image", Boolean(state.avatar.imageElement));
+  els.avatarPlaceholder.hidden = Boolean(state.avatar.imageElement);
+  if (!selected && !state.avatar.loading) setAvatarStatus(state.account ? "Choose one card to create a PNG avatar." : "Connect wallet to begin.");
+}
+
+function updateAvatarFromControls() {
+  state.avatar.zoom = clampNumber(Number(els.avatarZoomInput.value) / 100, AVATAR_MIN_ZOOM, AVATAR_MAX_ZOOM);
+  state.avatar.offsetX = clampNumber(Number(els.avatarPanXInput.value), -35, 35);
+  state.avatar.offsetY = clampNumber(Number(els.avatarPanYInput.value), -35, 35);
+  drawAvatarCanvas();
+}
+
+function resetAvatarCut() {
+  resetAvatarViewValues();
+  drawAvatarCanvas();
+}
+
+function resetAvatarViewValues() {
+  state.avatar.zoom = AVATAR_DEFAULT_ZOOM;
+  state.avatar.offsetX = 0;
+  state.avatar.offsetY = AVATAR_DEFAULT_PAN_Y;
+  if (els.avatarZoomInput) els.avatarZoomInput.value = AVATAR_DEFAULT_ZOOM_INPUT;
+  if (els.avatarPanXInput) els.avatarPanXInput.value = "0";
+  if (els.avatarPanYInput) els.avatarPanYInput.value = AVATAR_DEFAULT_PAN_Y_INPUT;
+}
+
+function updateAvatarGuide() {
+  if (!els.avatarPreviewShell || !els.avatarGuideInput) return;
+  els.avatarPreviewShell.classList.toggle("guide-on", els.avatarGuideInput.checked);
+}
+
+function drawAvatarCanvas() {
+  if (!els.avatarCanvas) return;
+  const canvas = els.avatarCanvas;
+  const ctx = canvas.getContext("2d");
+  canvas.width = AVATAR_CANVAS_SIZE;
+  canvas.height = AVATAR_CANVAS_SIZE;
+  ctx.clearRect(0, 0, AVATAR_CANVAS_SIZE, AVATAR_CANVAS_SIZE);
+  const image = state.avatar.imageElement;
+  if (!image) {
+    ctx.fillStyle = "#eef3ef";
+    ctx.fillRect(0, 0, AVATAR_CANVAS_SIZE, AVATAR_CANVAS_SIZE);
+    updateAvatarControls();
+    return;
+  }
+
+  const preset = AVATAR_PRESETS[state.avatar.mode] || AVATAR_PRESETS.core;
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  const base = Math.min(width, height);
+  const zoom = clampNumber(state.avatar.zoom || 1, AVATAR_MIN_ZOOM, AVATAR_MAX_ZOOM);
+  const sourceSize = clampNumber(base * preset.sourceRatio / zoom, base * 0.38, Math.max(width, height));
+  const panReach = sourceSize * 0.55;
+  const centerX = width * preset.centerX + (state.avatar.offsetX / 100) * panReach;
+  const centerY = height * preset.centerY + (state.avatar.offsetY / 100) * panReach;
+
+  drawAvatarBackdrop(ctx, image, width, height);
+  drawVirtualAvatarSource(ctx, image, width, height, centerX, centerY, sourceSize);
+  drawAvatarVignette(ctx);
+  if (state.avatar.mode === "specimen") drawSpecimenAvatarOverlay(ctx);
+  updateAvatarControls();
+}
+
+function drawAvatarBackdrop(ctx, image, width, height) {
+  const size = AVATAR_CANVAS_SIZE;
+  ctx.save();
+  ctx.fillStyle = "#eef3ef";
+  ctx.fillRect(0, 0, size, size);
+  const scale = Math.max(size / width, size / height);
+  const drawWidth = width * scale;
+  const drawHeight = height * scale;
+  ctx.globalAlpha = 0.42;
+  ctx.filter = "blur(22px) saturate(0.9)";
+  ctx.drawImage(image, (size - drawWidth) / 2, (size - drawHeight) / 2, drawWidth, drawHeight);
+  ctx.filter = "none";
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "rgba(238,243,239,0.18)";
+  ctx.fillRect(0, 0, size, size);
+  ctx.restore();
+}
+
+function drawVirtualAvatarSource(ctx, image, width, height, centerX, centerY, sourceSize) {
+  const size = AVATAR_CANVAS_SIZE;
+  const left = centerX - sourceSize / 2;
+  const top = centerY - sourceSize / 2;
+  const right = left + sourceSize;
+  const bottom = top + sourceSize;
+  const ix0 = clampNumber(left, 0, width);
+  const iy0 = clampNumber(top, 0, height);
+  const ix1 = clampNumber(right, 0, width);
+  const iy1 = clampNumber(bottom, 0, height);
+  const sourceWidth = ix1 - ix0;
+  const sourceHeight = iy1 - iy0;
+  if (sourceWidth <= 0 || sourceHeight <= 0) return;
+  const dx = ((ix0 - left) / sourceSize) * size;
+  const dy = ((iy0 - top) / sourceSize) * size;
+  const dw = (sourceWidth / sourceSize) * size;
+  const dh = (sourceHeight / sourceSize) * size;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, ix0, iy0, sourceWidth, sourceHeight, dx, dy, dw, dh);
+}
+
+function drawAvatarVignette(ctx) {
+  const size = AVATAR_CANVAS_SIZE;
+  const gradient = ctx.createRadialGradient(size / 2, size / 2, size * 0.22, size / 2, size / 2, size * 0.72);
+  gradient.addColorStop(0, "rgba(255,255,255,0)");
+  gradient.addColorStop(0.7, "rgba(0,0,0,0.03)");
+  gradient.addColorStop(1, "rgba(0,0,0,0.18)");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+}
+
+function drawSpecimenAvatarOverlay(ctx) {
+  const size = AVATAR_CANVAS_SIZE;
+  const selected = avatarSelectedToken();
+  const sealed = selected?.isSealed === true;
+  ctx.save();
+  ctx.lineWidth = 10;
+  ctx.strokeStyle = sealed ? "rgba(215,255,233,0.72)" : "rgba(247,213,141,0.58)";
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size * 0.438, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = sealed ? "rgba(72,214,157,0.46)" : "rgba(141,113,61,0.42)";
+  ctx.beginPath();
+  ctx.arc(size / 2, size / 2, size * 0.465, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function startAvatarDrag(event) {
+  if (!state.avatar.imageElement) return;
+  state.avatar.drag = {
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    offsetX: state.avatar.offsetX,
+    offsetY: state.avatar.offsetY
+  };
+  els.avatarPreviewShell.setPointerCapture?.(event.pointerId);
+}
+
+function moveAvatarDrag(event) {
+  const drag = state.avatar.drag;
+  if (!drag || drag.pointerId !== event.pointerId) return;
+  const rect = els.avatarPreviewShell.getBoundingClientRect();
+  const deltaX = ((event.clientX - drag.startX) / Math.max(1, rect.width)) * 90;
+  const deltaY = ((event.clientY - drag.startY) / Math.max(1, rect.height)) * 90;
+  state.avatar.offsetX = clampNumber(drag.offsetX - deltaX, -35, 35);
+  state.avatar.offsetY = clampNumber(drag.offsetY - deltaY, -35, 35);
+  els.avatarPanXInput.value = String(Math.round(state.avatar.offsetX));
+  els.avatarPanYInput.value = String(Math.round(state.avatar.offsetY));
+  drawAvatarCanvas();
+}
+
+function endAvatarDrag(event) {
+  if (state.avatar.drag?.pointerId === event.pointerId) state.avatar.drag = null;
+}
+
+function downloadAvatarPNG() {
+  if (!state.avatar.imageElement) return;
+  drawAvatarCanvas();
+  const selected = avatarSelectedToken();
+  const tokenId = selected?.tokenId || "oneplant";
+  const status = selected?.isSealed ? "sealed" : "unsealed";
+  els.avatarCanvas.toBlob((blob) => {
+    if (!blob) {
+      showAvatarNotice("PNG export failed.", "error");
+      return;
+    }
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `oneplant-avatar-op-${tokenId}-${status}.png`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }, "image/png");
+}
+
+function avatarSelectedToken() {
+  return state.tokens.find((token) => token.tokenId === state.avatar.selectedTokenId) || null;
+}
+
+function setAvatarStatus(message) {
+  if (els.avatarStatus) els.avatarStatus.textContent = message;
+}
+
+function showAvatarNotice(message, type = "info") {
+  els.avatarNotice.hidden = false;
+  els.avatarNotice.className = `notice ${type === "error" ? "error" : type === "success" ? "success" : ""}`;
+  els.avatarNotice.innerHTML = message;
+}
+
+function loadImageElement(source) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Avatar image failed to load."));
+    image.decoding = "async";
+    image.src = source;
+  });
 }
 
 async function batchSealOrUnseal(mode) {
@@ -1508,9 +1911,52 @@ function parseSlippageBps(value) {
 }
 
 function parseTokenURI(uri) {
-  if (!uri?.startsWith("data:application/json;base64,")) return null;
-  const raw = uri.slice("data:application/json;base64,".length);
-  return JSON.parse(decodeBase64(raw));
+  if (!uri) return null;
+  if (uri.startsWith("data:application/json;base64,")) {
+    const raw = uri.slice("data:application/json;base64,".length);
+    return JSON.parse(decodeBase64(raw));
+  }
+  if (uri.startsWith("data:application/json;utf8,") || uri.startsWith("data:application/json;charset=utf-8,")) {
+    const raw = uri.slice(uri.indexOf(",") + 1);
+    return JSON.parse(decodeURIComponent(raw));
+  }
+  return null;
+}
+
+function metadataImageSource(metadata) {
+  const image = metadata?.image || "";
+  if (image) return image;
+  const rawSvg = metadata?.image_data || metadata?.imageData || "";
+  if (String(rawSvg).trim().startsWith("<svg")) {
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(rawSvg)}`;
+  }
+  return "";
+}
+
+function cleanAvatarImageSource(source) {
+  const svg = decodeSvgImageSource(source);
+  if (!svg) return source;
+  const cleanSvg = svg
+    .replace(/<g\b(?=[^>]*class=["'][^"']*\bstandard-label\b[^"']*["'])[^>]*>[\s\S]*?<\/g>/g, "")
+    .replace(/<g\b(?=[^>]*class=["'][^"']*\btypography-v\d+\b[^"']*["'])[^>]*>[\s\S]*?<\/g>/g, "");
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(cleanSvg)}`;
+}
+
+function decodeSvgImageSource(source) {
+  const value = String(source || "").trim();
+  if (value.startsWith("<svg")) return value;
+  if (value.startsWith("data:image/svg+xml;base64,")) {
+    return decodeBase64(value.slice("data:image/svg+xml;base64,".length));
+  }
+  if (value.startsWith("data:image/svg+xml")) {
+    const raw = value.slice(value.indexOf(",") + 1);
+    try {
+      return decodeURIComponent(raw);
+    } catch (_) {
+      return raw;
+    }
+  }
+  return "";
 }
 
 function decodeBase64(value) {
@@ -1654,6 +2100,11 @@ function trimNumber(value, decimals) {
   const [whole, fraction = ""] = String(value).split(".");
   const trimmed = fraction.slice(0, decimals).replace(/0+$/, "");
   return trimmed ? `${whole}.${trimmed}` : whole;
+}
+
+function clampNumber(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
 }
 
 function formatExactUnits(value, decimals) {
