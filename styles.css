@@ -65,6 +65,30 @@ button.chip:hover:not(:disabled),
   border-color: var(--accent);
 }
 
+#connectButton {
+  white-space: nowrap;
+}
+
+#connectButton.connected {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #fff;
+  color: var(--accent);
+  border-color: rgba(31, 122, 85, 0.42);
+}
+
+#connectButton.connected::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(31, 122, 85, 0.12);
+  flex: 0 0 auto;
+}
+
 .topbar {
   display: flex;
   align-items: center;
