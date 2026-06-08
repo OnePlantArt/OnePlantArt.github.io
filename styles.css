@@ -690,6 +690,178 @@ input:focus {
   line-height: 1.45;
 }
 
+.avatar-workbench {
+  display: grid;
+  grid-template-columns: minmax(250px, 340px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.avatar-token-list {
+  display: grid;
+  gap: 8px;
+  max-height: 690px;
+  overflow: auto;
+  padding: 16px;
+}
+
+.avatar-token-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  width: 100%;
+  border-color: var(--line);
+  background: #fff;
+  color: var(--ink);
+  text-align: left;
+  padding: 0 11px;
+}
+
+.avatar-token-row.selected {
+  border-color: var(--accent);
+  background: #eaf5ef;
+  box-shadow: 0 0 0 3px rgba(31, 122, 85, 0.12);
+}
+
+.avatar-token-row > span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar-studio-body {
+  display: grid;
+  grid-template-columns: minmax(310px, 0.95fr) minmax(260px, 0.75fr);
+  gap: 18px;
+  padding: 16px;
+  align-items: start;
+}
+
+.avatar-preview-shell {
+  position: relative;
+  width: 100%;
+  max-width: 620px;
+  aspect-ratio: 1;
+  justify-self: center;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: linear-gradient(135deg, #e8eee8, #faf7ec);
+  touch-action: none;
+}
+
+.avatar-preview-shell.has-image {
+  cursor: grab;
+}
+
+.avatar-preview-shell.has-image:active {
+  cursor: grabbing;
+}
+
+.avatar-preview-shell canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.avatar-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.avatar-placeholder[hidden] {
+  display: none;
+}
+
+.avatar-circle-guide {
+  display: none;
+  position: absolute;
+  inset: 7%;
+  border: 2px dashed rgba(255, 255, 255, 0.82);
+  border-radius: 50%;
+  box-shadow: 0 0 0 999px rgba(6, 12, 10, 0.18), inset 0 0 0 1px rgba(20, 37, 29, 0.22);
+  pointer-events: none;
+}
+
+.avatar-preview-shell.guide-on.has-image .avatar-circle-guide {
+  display: block;
+}
+
+.avatar-preview-shell.is-loading::after {
+  content: "Loading OP";
+  position: absolute;
+  inset: auto 16px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 999px;
+  background: rgba(20, 37, 29, 0.76);
+  color: #fff;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.avatar-controls {
+  display: grid;
+  gap: 13px;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.mode-switch button {
+  min-height: 38px;
+  background: #fff;
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.mode-switch button.active {
+  background: #e5f3eb;
+  border-color: var(--accent);
+  color: #145b3c;
+}
+
+.avatar-range-field {
+  padding: 0;
+}
+
+input[type="range"] {
+  min-height: 28px;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.check-field {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.check-field input {
+  min-height: auto;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+
+.avatar-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
 .panel {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -1159,6 +1331,15 @@ input:focus {
     grid-template-columns: 1fr;
   }
 
+  .avatar-workbench,
+  .avatar-studio-body {
+    grid-template-columns: 1fr;
+  }
+
+  .avatar-token-list {
+    max-height: 360px;
+  }
+
   .toolbar-row {
     align-items: stretch;
     display: grid;
@@ -1236,6 +1417,10 @@ input:focus {
   }
 
   .nft-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .avatar-actions {
     grid-template-columns: 1fr;
   }
 
