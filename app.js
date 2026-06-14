@@ -1704,7 +1704,7 @@ async function batchSealOrUnseal(mode) {
 
 function applySwapLabels() {
   const buy = state.swapSide === "buy";
-  els.routeLabel.textContent = buy ? "Swap Buy >= 10,000 UP to mint OP NFTs" : "Selling UP may burn Unsealed OP NFTs";
+  els.routeLabel.textContent = buy ? "Buy 10,000+ UP to mint OP NFTs" : "Selling UP may burn Unsealed OP NFTs";
   els.amountInLabel.textContent = buy ? "ETH in" : "UP in";
   els.amountOutMinLabel.textContent = buy ? "Min UP out" : "Min ETH out";
   els.amountInInput.placeholder = buy ? "0.001" : "10000";
