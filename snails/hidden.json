@@ -1,0 +1,11 @@
+{
+  "name": "OnePlant Snails",
+  "description": "A 1024x1024 pixel-style garden snail PFP from the OnePlant universe.",
+  "image": "https://oneplantart.github.io/snails/hidden.jpeg",
+  "attributes": [
+    {
+      "trait_type": "Status",
+      "value": "Unrevealed"
+    }
+  ]
+}
