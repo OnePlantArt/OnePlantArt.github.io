@@ -1441,3 +1441,205 @@ input[type="range"] {
     margin-left: 0;
   }
 }
+
+.snails-panel {
+  max-width: 1060px;
+  margin: 0 auto 24px;
+}
+
+.snails-max-supply {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  font-size: 0.48em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  vertical-align: middle;
+}
+
+.snails-hero {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.28fr);
+  gap: 16px;
+  padding: 0 16px 16px;
+  align-items: stretch;
+}
+
+.snails-preview-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #14251d;
+  overflow: hidden;
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+}
+
+.snails-preview-card img {
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  object-fit: cover;
+  display: block;
+}
+
+.snails-copy {
+  display: grid;
+  align-content: center;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 18px;
+}
+
+.snails-copy h3 {
+  margin: 0;
+  font-size: 26px;
+  line-height: 1.1;
+}
+
+.snails-copy p:not(.home-kicker) {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.snails-metrics {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  padding: 0 16px 16px;
+}
+
+.snails-wallet-summary {
+  margin: 0 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--muted);
+  padding: 12px 14px;
+  display: grid;
+  gap: 5px;
+  line-height: 1.45;
+}
+
+.snails-wallet-summary strong {
+  color: var(--ink);
+}
+
+.snails-eligibility-list {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+}
+
+.snails-eligibility-row {
+  display: grid;
+  grid-template-columns: 168px 12px minmax(0, 1fr);
+  column-gap: 8px;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.snails-eligibility-label {
+  color: var(--muted);
+  white-space: nowrap;
+  text-align: left;
+}
+
+.snails-eligibility-separator {
+  color: var(--muted);
+  text-align: center;
+}
+
+.snails-eligibility-values {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.snails-remaining-count {
+  color: #d33b2f;
+  font-weight: 800;
+}
+
+@media (max-width: 520px) {
+  .snails-eligibility-row {
+    grid-template-columns: 1fr 12px;
+    row-gap: 2px;
+  }
+
+  .snails-eligibility-values {
+    grid-column: 1 / -1;
+    padding-left: 0;
+  }
+}
+
+.snails-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  padding: 0 16px 16px;
+}
+
+.snails-mint-card {
+  display: grid;
+  align-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 14px;
+  min-height: 178px;
+}
+
+.snails-mint-card h3 {
+  margin: 0;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.snails-mint-card p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.snails-rules {
+  margin: 0 16px 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: #fff;
+  padding: 14px 16px;
+}
+
+.snails-rules h3 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+
+.snails-rules ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+@media (max-width: 980px) {
+  .snails-hero,
+  .snails-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .snails-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .snails-metrics {
+    grid-template-columns: 1fr;
+  }
+}
