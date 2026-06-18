@@ -54,6 +54,18 @@ const PLANTING_SALE_ABI = [
   "function paidPlanting(uint256 plantNumber) payable returns (uint256[])"
 ];
 
+const SNAILS_ABI = [
+  "function MAX_SUPPLY() view returns (uint256)",
+  "function totalSupply() view returns (uint256)",
+  "function allowlistMintEndsAt() view returns (uint256)",
+  "function allowlistMintOpen() view returns (bool)",
+  "function freeMintEnabled() view returns (bool)",
+  "function walletMintInfo(address account) view returns (uint256 opAllocation,uint256 opMintedByWallet,uint256 opRemaining,uint256 collabWalletAllocation,uint256 collabMintedByWallet,uint256 collabRemaining,uint256 freeMintedByWallet,uint256 allowlistEndsAt,bool isAllowlistOpen,bool isFreeMintOpen)",
+  "function mintOpAllowlist()",
+  "function mintCollab()",
+  "function freeMint()"
+];
+
 const HOOK_ABI = [
   "function quoteNativeTeamFee(uint256 grossNative) pure returns (uint256 teamFeeNative,uint256 netNativeForSwap)",
   "function quoteUPBurnFee(uint256 grossUP) pure returns (uint256 burnFeeUP,uint256 netUP)"
@@ -99,6 +111,7 @@ const els = {
   homePanel: document.getElementById("homePanel"),
   operationsPanel: document.getElementById("operationsPanel"),
   avatarPanel: document.getElementById("avatarPanel"),
+  snailsPanel: document.getElementById("snailsPanel"),
   plantingPanel: document.getElementById("plantingPanel"),
   aboutPanel: document.getElementById("aboutPanel"),
   configPanel: document.getElementById("configPanel"),
@@ -129,6 +142,22 @@ const els = {
   avatarGuideInput: document.getElementById("avatarGuideInput"),
   avatarResetButton: document.getElementById("avatarResetButton"),
   avatarDownloadButton: document.getElementById("avatarDownloadButton"),
+  snailsNotice: document.getElementById("snailsNotice"),
+  snailsRefreshButton: document.getElementById("snailsRefreshButton"),
+  snailsPreviewImage: document.getElementById("snailsPreviewImage"),
+  snailsContractMetric: document.getElementById("snailsContractMetric"),
+  snailsSupplyMetric: document.getElementById("snailsSupplyMetric"),
+  snailsAllowlistMetric: document.getElementById("snailsAllowlistMetric"),
+  snailsFreeMintMetric: document.getElementById("snailsFreeMintMetric"),
+  snailsWalletMetric: document.getElementById("snailsWalletMetric"),
+  snailsWalletSummary: document.getElementById("snailsWalletSummary"),
+  snailsOpStatus: document.getElementById("snailsOpStatus"),
+  snailsCollabStatus: document.getElementById("snailsCollabStatus"),
+  snailsFreeStatus: document.getElementById("snailsFreeStatus"),
+  snailsOpMintButton: document.getElementById("snailsOpMintButton"),
+  snailsCollabMintButton: document.getElementById("snailsCollabMintButton"),
+  snailsFreeMintButton: document.getElementById("snailsFreeMintButton"),
+  snailsFreeMintRules: document.getElementById("snailsFreeMintRules"),
   plantingNotice: document.getElementById("plantingNotice"),
   plantingRefreshButton: document.getElementById("plantingRefreshButton"),
   plantingStatusMetric: document.getElementById("plantingStatusMetric"),
@@ -165,6 +194,7 @@ const els = {
   helperLink: document.getElementById("helperLink"),
   hookLink: document.getElementById("hookLink"),
   lpLockLink: document.getElementById("lpLockLink"),
+  snailsLink: document.getElementById("snailsLink"),
   configStatus: document.getElementById("configStatus"),
   rpcNetworkMetric: document.getElementById("rpcNetworkMetric"),
   rpcSourceMetric: document.getElementById("rpcSourceMetric"),
@@ -200,6 +230,7 @@ const state = {
   quotedSide: "",
   quotedSlippageBps: 0,
   planting: null,
+  snails: null,
   avatar: {
     selectedTokenId: "",
     mode: "core",
@@ -301,6 +332,10 @@ function bindUI() {
   els.clearRpcButton.addEventListener("click", clearCustomRpc);
   els.toggleNftImagesButton.addEventListener("click", toggleNFTImages);
   els.avatarRefreshButton.addEventListener("click", refreshAvatarInventory);
+  els.snailsRefreshButton.addEventListener("click", () => refreshSnails());
+  els.snailsOpMintButton.addEventListener("click", () => executeSnailsMint("op"));
+  els.snailsCollabMintButton.addEventListener("click", () => executeSnailsMint("collab"));
+  els.snailsFreeMintButton.addEventListener("click", () => executeSnailsMint("free"));
   els.avatarResetButton.addEventListener("click", resetAvatarCut);
   els.avatarDownloadButton.addEventListener("click", downloadAvatarPNG);
   els.avatarGuideInput.addEventListener("change", updateAvatarGuide);
@@ -383,6 +418,7 @@ async function switchTab(tab) {
     home: els.homePanel,
     operations: els.operationsPanel,
     avatar: els.avatarPanel,
+    snails: els.snailsPanel,
     about: els.aboutPanel,
     config: els.configPanel
   };
@@ -403,10 +439,11 @@ async function switchTab(tab) {
   if (state.activeTab === "about") await loadAboutGuide();
   if (state.activeTab === "config") renderRpcConfig();
   if (state.activeTab === "avatar") await renderAvatarWorkspace();
+  if (state.activeTab === "snails") await renderSnailsWorkspace();
 }
 
 function isKnownTab(tab) {
-  return tab === "home" || tab === "operations" || tab === "avatar" || tab === "about" || tab === "config";
+  return tab === "home" || tab === "operations" || tab === "avatar" || tab === "snails" || tab === "about" || tab === "config";
 }
 
 function openConfiguredExternalUrl(configKey, label, fallbackUrl) {
@@ -748,6 +785,10 @@ function isPlantingConfigured(network) {
   return isNetworkConfigured(network) && ethers.isAddress(network?.contracts?.plantingSale || "");
 }
 
+function isSnailsConfigured(network) {
+  return isNetworkConfigured(network) && ethers.isAddress(network?.contracts?.onePlantSnails || "");
+}
+
 function applyNetworkUI() {
   const network = selectedNetwork();
   const configured = isNetworkConfigured(network);
@@ -757,6 +798,7 @@ function applyNetworkUI() {
   els.switchNetworkButton.disabled = !configured || !state.account || state.busy;
   els.refreshButton.disabled = !configured || !state.account || state.busy;
   els.plantingRefreshButton.disabled = !isPlantingConfigured(network) || state.busy;
+  els.snailsRefreshButton.disabled = !isSnailsConfigured(network) || state.busy;
   els.swapButton.disabled = !configured || !state.account || state.busy;
   updateWalletConnectionUI();
   applyConfiguredLabels();
@@ -765,6 +807,7 @@ function applyNetworkUI() {
   applySwapLabels();
   updateSelectedTokenBox();
   updateAvatarControls();
+  updateSnailsControls();
   if (state.activeTab === "config") renderRpcConfig();
   if (!configured) {
     showNotice(`${label} has no complete contract configuration yet. Fill site/config/oneplant.config.json before using this network.`, "error");
@@ -881,7 +924,7 @@ async function switchToSelectedNetwork() {
 function initContracts() {
   const network = selectedNetwork();
   if (!isNetworkConfigured(network)) return;
-  const { core, upToken, plantingSale, swapHelper, hook } = network.contracts;
+  const { core, upToken, plantingSale, swapHelper, hook, onePlantSnails } = network.contracts;
   const readProvider = buildReadProvider(network);
   state.readProvider = readProvider;
   state.contracts.coreRead = new ethers.Contract(core, CORE_ABI, readProvider);
@@ -893,6 +936,11 @@ function initContracts() {
   } else {
     delete state.contracts.plantingRead;
   }
+  if (ethers.isAddress(onePlantSnails || "")) {
+    state.contracts.snailsRead = new ethers.Contract(onePlantSnails, SNAILS_ABI, readProvider);
+  } else {
+    delete state.contracts.snailsRead;
+  }
   if (state.signer) {
     state.contracts.coreWrite = new ethers.Contract(core, CORE_ABI, state.signer);
     state.contracts.upWrite = new ethers.Contract(upToken, UP_ABI, state.signer);
@@ -901,6 +949,11 @@ function initContracts() {
       state.contracts.plantingWrite = new ethers.Contract(plantingSale, PLANTING_SALE_ABI, state.signer);
     } else {
       delete state.contracts.plantingWrite;
+    }
+    if (ethers.isAddress(onePlantSnails || "")) {
+      state.contracts.snailsWrite = new ethers.Contract(onePlantSnails, SNAILS_ABI, state.signer);
+    } else {
+      delete state.contracts.snailsWrite;
     }
   }
 }
@@ -920,6 +973,7 @@ async function refreshAll(options = {}) {
     initContracts();
     await refreshBalances();
     await refreshNFTs();
+    await refreshSnails({ silent: true });
     if (successMessage) showNotice(successMessage, "success");
   } catch (error) {
     showNotice(errorMessage(error), "error");
@@ -1102,10 +1156,261 @@ async function executePaidPlanting() {
   }
 }
 
-function parsePlantNumberInput() {
-  const raw = String(els.plantingNumberInput.value || "").trim();
-  if (!/^\d+$/.test(raw)) return 0;
-  return Number(raw);
+function snailsUiConfig() {
+  return state.config?.ui?.snails || {};
+}
+
+function snailsRules() {
+  const cfg = snailsUiConfig();
+  return {
+    hiddenImagePath: cfg.hiddenImagePath || "./snails/hidden.jpeg",
+    freeMintMinEth: String(cfg.freeMintMinEth || "0.01"),
+    freeMintMaxPerWallet: Number(cfg.freeMintMaxPerWallet || 1),
+    freeMintMaxPerBlock: Number(cfg.freeMintMaxPerBlock || 2),
+    plainEoaOnly: cfg.plainEoaOnly !== false,
+    mintStatusRefreshAfterTxMs: Number(cfg.mintStatusRefreshAfterTxMs || state.config?.ui?.pollAfterTxMs || 2500)
+  };
+}
+
+function minFreeMintEthWei() {
+  try {
+    return ethers.parseEther(snailsRules().freeMintMinEth);
+  } catch (_) {
+    return ethers.parseEther("0.01");
+  }
+}
+
+async function renderSnailsWorkspace() {
+  applySnailsStaticConfig();
+  await refreshSnails({ silent: true });
+}
+
+function applySnailsStaticConfig() {
+  const rules = snailsRules();
+  if (els.snailsPreviewImage) els.snailsPreviewImage.src = rules.hiddenImagePath;
+  if (els.snailsFreeMintRules) {
+    const eoaRule = rules.plainEoaOnly
+      ? "EOA wallet only; smart contract or delegated-code wallets may be rejected."
+      : "Wallet type restrictions depend on the live contract configuration.";
+    els.snailsFreeMintRules.innerHTML = `
+      <li>${escapeHtml(eoaRule)}</li>
+      <li>Wallet must hold at least ${escapeHtml(rules.freeMintMinEth)} ETH when minting.</li>
+      <li>Maximum ${escapeHtml(rules.freeMintMaxPerWallet)} Public Free Mint${rules.freeMintMaxPerWallet === 1 ? "" : "s"} per wallet.</li>
+      <li>Maximum ${escapeHtml(rules.freeMintMaxPerBlock)} Public Free Mint${rules.freeMintMaxPerBlock === 1 ? "" : "s"} per block.</li>
+    `;
+  }
+}
+
+async function refreshSnails(options = {}) {
+  const network = selectedNetwork();
+  applySnailsStaticConfig();
+  if (!isSnailsConfigured(network)) {
+    state.snails = null;
+    renderSnailsUnavailable(`${network?.label || "Selected network"} has no OnePlantSnails address configured yet.`);
+    return;
+  }
+  try {
+    initContracts();
+    const readProvider = state.readProvider || buildReadProvider(network);
+    const contract = state.contracts.snailsRead || new ethers.Contract(network.contracts.onePlantSnails, SNAILS_ABI, readProvider);
+    const queryAccount = state.account || NATIVE;
+    const [totalSupplyRaw, maxSupplyRaw, walletInfoRaw, walletEthRaw, walletCodeRaw] = await Promise.all([
+      contract.totalSupply(),
+      contract.MAX_SUPPLY(),
+      contract.walletMintInfo(queryAccount),
+      state.account ? readProvider.getBalance(state.account) : 0n,
+      state.account ? readProvider.getCode(state.account).catch(() => "") : "0x"
+    ]);
+    state.snails = {
+      contractAddress: network.contracts.onePlantSnails,
+      totalSupply: BigInt(totalSupplyRaw),
+      maxSupply: BigInt(maxSupplyRaw),
+      walletInfo: normalizeSnailsWalletInfo(walletInfoRaw),
+      walletEth: BigInt(walletEthRaw),
+      walletCode: walletCodeRaw || "",
+      refreshedAt: Date.now()
+    };
+    renderSnailsState();
+    if (!options.silent) showSnailsNotice("OnePlantSnails mint status refreshed.", "success");
+  } catch (error) {
+    state.snails = null;
+    renderSnailsUnavailable(`OnePlantSnails status unavailable: ${errorMessage(error)}`);
+    if (!options.silent) showSnailsNotice(errorMessage(error), "error");
+  }
+}
+
+function normalizeSnailsWalletInfo(raw) {
+  return {
+    opAllocation: BigInt(raw.opAllocation ?? raw[0] ?? 0),
+    opMintedByWallet: BigInt(raw.opMintedByWallet ?? raw[1] ?? 0),
+    opRemaining: BigInt(raw.opRemaining ?? raw[2] ?? 0),
+    collabWalletAllocation: BigInt(raw.collabWalletAllocation ?? raw[3] ?? 0),
+    collabMintedByWallet: BigInt(raw.collabMintedByWallet ?? raw[4] ?? 0),
+    collabRemaining: BigInt(raw.collabRemaining ?? raw[5] ?? 0),
+    freeMintedByWallet: BigInt(raw.freeMintedByWallet ?? raw[6] ?? 0),
+    allowlistEndsAt: BigInt(raw.allowlistEndsAt ?? raw[7] ?? 0),
+    isAllowlistOpen: Boolean(raw.isAllowlistOpen ?? raw[8]),
+    isFreeMintOpen: Boolean(raw.isFreeMintOpen ?? raw[9])
+  };
+}
+
+function renderSnailsUnavailable(message) {
+  if (!els.snailsContractMetric) return;
+  const network = selectedNetwork();
+  const address = network?.contracts?.onePlantSnails || "";
+  els.snailsContractMetric.textContent = ethers.isAddress(address || "") ? shortAddress(address) : "Not configured";
+  els.snailsSupplyMetric.textContent = "-";
+  els.snailsAllowlistMetric.textContent = "-";
+  els.snailsFreeMintMetric.textContent = "-";
+  els.snailsWalletMetric.textContent = state.account ? shortAddress(state.account) : "Connect wallet";
+  els.snailsWalletSummary.textContent = message;
+  els.snailsOpStatus.textContent = state.account ? message : "Connect wallet to check OP Holder Free Mint allocation.";
+  els.snailsCollabStatus.textContent = state.account ? message : "Connect wallet to check Collab Free Mint allocation.";
+  els.snailsFreeStatus.textContent = state.account ? message : "Connect wallet to check Public Free Mint restrictions.";
+  els.snailsOpMintButton.disabled = true;
+  els.snailsCollabMintButton.disabled = true;
+  els.snailsFreeMintButton.disabled = true;
+  if (els.snailsRefreshButton) els.snailsRefreshButton.disabled = !isSnailsConfigured(network) || state.busy;
+}
+
+function renderSnailsState() {
+  const s = state.snails;
+  if (!s) {
+    renderSnailsUnavailable("Refresh Snails status.");
+    return;
+  }
+  const info = s.walletInfo;
+  els.snailsContractMetric.textContent = shortAddress(s.contractAddress);
+  els.snailsSupplyMetric.textContent = `${s.totalSupply.toString()} / ${s.maxSupply.toString()}`;
+  els.snailsAllowlistMetric.textContent = allowlistStatusLabel(info);
+  els.snailsFreeMintMetric.textContent = info.isFreeMintOpen ? "Open" : "Closed";
+  els.snailsWalletMetric.textContent = state.account ? shortAddress(state.account) : "Connect wallet";
+
+  if (!state.account) {
+    els.snailsWalletSummary.textContent = "Connect wallet to check OP Holder Free Mint, Collab Free Mint, and Public Free Mint eligibility.";
+  } else {
+    const freeMintMax = BigInt(snailsRules().freeMintMaxPerWallet);
+    const freeMintRemaining = freeMintMax > info.freeMintedByWallet ? freeMintMax - info.freeMintedByWallet : 0n;
+    els.snailsWalletSummary.innerHTML = `
+      <div class="snails-eligibility-list">
+        ${snailsEligibilityRow("OP Holder Free Mint", info.opRemaining, info.opMintedByWallet)}
+        ${snailsEligibilityRow("Collab Free Mint", info.collabRemaining, info.collabMintedByWallet)}
+        ${snailsEligibilityRow("Public Free Mint", freeMintRemaining, info.freeMintedByWallet)}
+      </div>
+    `;
+  }
+  updateSnailsControls();
+}
+
+function snailsEligibilityRow(label, remaining, minted) {
+  return `
+    <div class="snails-eligibility-row">
+      <span class="snails-eligibility-label">${escapeHtml(label)}</span>
+      <span class="snails-eligibility-separator">:</span>
+      <span class="snails-eligibility-values"><span class="snails-remaining-count">${remaining.toString()}</span> spot remaining, <span>${minted.toString()}</span> minted.</span>
+    </div>
+  `;
+}
+
+function allowlistStatusLabel(info) {
+  if (!info) return "-";
+  if (info.isAllowlistOpen) return info.allowlistEndsAt > 0n ? `Open until ${formatUnixTimestamp(info.allowlistEndsAt)}` : "Open";
+  if (info.allowlistEndsAt === 0n) return "Not started";
+  return `Closed ${formatUnixTimestamp(info.allowlistEndsAt)}`;
+}
+
+function updateSnailsControls() {
+  if (!els.snailsOpMintButton) return;
+  const network = selectedNetwork();
+  if (!isSnailsConfigured(network)) {
+    renderSnailsUnavailable(`${network?.label || "Selected network"} has no OnePlantSnails address configured yet.`);
+    return;
+  }
+  if (els.snailsRefreshButton) els.snailsRefreshButton.disabled = state.busy;
+  const s = state.snails;
+  if (!s || !s.walletInfo) {
+    els.snailsOpMintButton.disabled = true;
+    els.snailsCollabMintButton.disabled = true;
+    els.snailsFreeMintButton.disabled = true;
+    return;
+  }
+  const info = s.walletInfo;
+  const hasWallet = Boolean(state.account);
+  const plainEoaOk = !snailsRules().plainEoaOnly || !s.walletCode || s.walletCode === "0x";
+  const hasMinEth = !hasWallet || s.walletEth >= minFreeMintEthWei();
+
+  els.snailsOpStatus.textContent = snailsOpStatus(info);
+  els.snailsCollabStatus.textContent = snailsCollabStatus(info);
+  els.snailsFreeStatus.textContent = snailsFreeStatus(info, s.walletEth, plainEoaOk, hasMinEth);
+
+  els.snailsOpMintButton.disabled = state.busy || !hasWallet || !info.isAllowlistOpen || info.opRemaining === 0n;
+  els.snailsCollabMintButton.disabled = state.busy || !hasWallet || !info.isAllowlistOpen || info.collabRemaining === 0n;
+  els.snailsFreeMintButton.disabled = state.busy || !hasWallet || !info.isFreeMintOpen || info.freeMintedByWallet >= BigInt(snailsRules().freeMintMaxPerWallet) || !plainEoaOk || !hasMinEth;
+}
+
+function snailsOpStatus(info) {
+  if (!state.account) return "Connect wallet to check OP Holder Free Mint allocation.";
+  if (!info.isAllowlistOpen) return info.allowlistEndsAt === 0n ? "OP Holder Free Mint has not started." : "OP Holder Free Mint is closed.";
+  if (info.opRemaining > 0n) return `You have ${info.opRemaining.toString()} OP Holder Free Mint${info.opRemaining === 1n ? "" : "s"} available. This button mints the maximum remaining amount.`;
+  if (info.opAllocation > 0n) return `OP Holder Free Mint allocation already used: ${info.opMintedByWallet.toString()} / ${info.opAllocation.toString()}.`;
+  return "No OP Holder Free Mint allocation found for this wallet.";
+}
+
+function snailsCollabStatus(info) {
+  if (!state.account) return "Connect wallet to check Collab Free Mint allocation.";
+  if (!info.isAllowlistOpen) return info.allowlistEndsAt === 0n ? "Collab Free Mint has not started." : "Collab Free Mint is closed.";
+  if (info.collabRemaining > 0n) return `You have ${info.collabRemaining.toString()} Collab Free Mint${info.collabRemaining === 1n ? "" : "s"} available. This button mints the maximum remaining amount.`;
+  if (info.collabWalletAllocation > 0n) return `Collab Free Mint allocation already used: ${info.collabMintedByWallet.toString()} / ${info.collabWalletAllocation.toString()}.`;
+  return "No Collab Free Mint allocation found for this wallet.";
+}
+
+function snailsFreeStatus(info, walletEth, plainEoaOk, hasMinEth) {
+  const rules = snailsRules();
+  if (!state.account) return "Connect wallet to check Public Free Mint restrictions.";
+  if (!info.isFreeMintOpen) return "Public Free Mint is currently closed.";
+  if (info.freeMintedByWallet >= BigInt(rules.freeMintMaxPerWallet)) return "Public Free Mint already used by this wallet.";
+  if (!plainEoaOk) return "This wallet appears to have contract or delegated code and may be rejected by the Public Free Mint rule.";
+  if (!hasMinEth) return `Wallet needs at least ${rules.freeMintMinEth} ETH. Current balance: ${trimNumber(ethers.formatEther(walletEth), 5)} ETH.`;
+  return `Public Free Mint is available. Requires EOA/no delegated code, at least ${rules.freeMintMinEth} ETH, and the per-block throttle must not be full.`;
+}
+
+async function executeSnailsMint(mode) {
+  const labels = {
+    op: "OP Holder Free Mint",
+    collab: "Collab Free Mint",
+    free: "Public Free Mint"
+  };
+  try {
+    const network = selectedNetwork();
+    if (!isSnailsConfigured(network)) throw new Error("OnePlantSnails contract is not configured.");
+    if (!state.account) throw new Error("Connect wallet first.");
+    setBusy(true, `Sending ${labels[mode]} transaction...`);
+    await ensureWalletOnSelectedNetwork();
+    initContracts();
+    const contract = state.contracts.snailsWrite;
+    if (!contract) throw new Error("OnePlantSnails write contract is not available.");
+    const tx = mode === "op"
+      ? await contract.mintOpAllowlist()
+      : mode === "collab"
+      ? await contract.mintCollab()
+      : await contract.freeMint();
+    showSnailsNotice(`${labels[mode]} sent: ${txLink(tx.hash)}`, "info");
+    await tx.wait();
+    showSnailsNotice(`${labels[mode]} complete.`, "success");
+    await delay(snailsRules().mintStatusRefreshAfterTxMs);
+    await refreshSnails({ silent: true });
+  } catch (error) {
+    showSnailsNotice(errorMessage(error), "error");
+  } finally {
+    setBusy(false);
+    applyNetworkUI();
+  }
+}
+
+function formatUnixTimestamp(value) {
+  const seconds = Number(value);
+  if (!Number.isFinite(seconds) || seconds <= 0) return "-";
+  return new Date(seconds * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 async function refreshNFTs() {
@@ -1282,6 +1587,7 @@ function renderEmptyWallet() {
   updatePlantingControls();
   renderAvatarTokenList();
   updateAvatarControls();
+  renderSnailsUnavailable(state.account ? "Refresh Snails status." : "Connect wallet to check your OnePlantSnails mint eligibility.");
 }
 
 function visibleTokens() {
@@ -1970,6 +2276,7 @@ function updateContractLinks() {
   setAddressLink(els.coreLink, network, network?.contracts?.core, "OP");
   setAddressLink(els.upLink, network, network?.contracts?.upToken, "UP");
   setAddressLink(els.plantingLink, network, network?.contracts?.plantingSale, "Planting");
+  setAddressLink(els.snailsLink, network, network?.contracts?.onePlantSnails, "Snails");
   setAddressLink(els.helperLink, network, network?.contracts?.swapHelper, "SwapHelper");
   setAddressLink(els.lpLockLink, network, network?.contracts?.lpPositionLocker, "LP Lock");
   setAddressLink(els.hookLink, network, network?.contracts?.hook, "HOOK");
@@ -2004,6 +2311,7 @@ function setBusy(busy, message = "") {
   updateWalletConnectionUI();
   updateSelectedTokenBox();
   updatePlantingControls();
+  updateSnailsControls();
   if (message) showNotice(message, "info");
 }
 
@@ -2025,6 +2333,12 @@ function showPlantingNotice(message, type = "info") {
   els.plantingNotice.hidden = false;
   els.plantingNotice.className = `notice ${type === "error" ? "error" : type === "success" ? "success" : ""}`;
   els.plantingNotice.innerHTML = message;
+}
+
+function showSnailsNotice(message, type = "info") {
+  els.snailsNotice.hidden = false;
+  els.snailsNotice.className = `notice ${type === "error" ? "error" : type === "success" ? "success" : ""}`;
+  els.snailsNotice.innerHTML = message;
 }
 
 function errorMessage(error) {
@@ -2079,6 +2393,19 @@ function decodeRevertData(data, depth = 0) {
 }
 
 function humanizeRevertMessage(message) {
+  const snailsMessages = {
+    ALLOWLIST_CLOSED: "OP Holder Free Mint / Collab Free Mint is closed or has not started.",
+    NO_OP_MINTS_AVAILABLE: "No OP Holder Free Mints are available for this wallet.",
+    NO_COLLAB_MINTS_AVAILABLE: "No Collab Free Mints are available for this wallet.",
+    FREE_MINT_CLOSED: "Public Free Mint is currently closed.",
+    LOW_ETH_BALANCE: "Public Free Mint requires the wallet to hold the minimum ETH balance.",
+    FREE_MINT_ALREADY_USED: "This wallet has already used its Public Free Mint.",
+    FREE_MINT_BLOCK_LIMIT: "The Public Free Mint per-block limit is full. Try again in a later block.",
+    NON_OP_SPOTS_EXCEEDED: "The non-OP mint allocation is full for this mint path.",
+    MAX_SUPPLY_EXCEEDED: "The collection max supply would be exceeded.",
+    NOT_PLAIN_EOA: "Public Free Mint requires a plain EOA wallet with no contract or delegated code."
+  };
+  if (snailsMessages[message]) return snailsMessages[message];
   if (message === "ONEPLANT_HOOK: RELEASE_CAP_EXCEEDED") {
     return `${message} - this buy exceeds the current timed swap-mint release capacity. Try a smaller ETH amount or wait for more UP capacity to release.`;
   }
