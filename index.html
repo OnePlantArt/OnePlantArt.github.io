@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OnePlantArt</title>
-    <link rel="stylesheet" href="./styles.css?v=20260614-swap-buy-natural-copy">
+    <link rel="stylesheet" href="./styles.css?v=20260617-snails-spot-remaining">
   </head>
   <body>
     <header class="topbar">
@@ -30,6 +30,7 @@
         <button id="homeTabButton" class="tab-button active" data-tab="home" type="button" role="tab" aria-selected="true">Home</button>
         <button id="operationsTabButton" class="tab-button" data-tab="operations" type="button" role="tab" aria-selected="false">Dapp</button>
         <button id="avatarTabButton" class="tab-button" data-tab="avatar" type="button" role="tab" aria-selected="false">Avatar</button>
+        <button id="snailsTabButton" class="tab-button" data-tab="snails" type="button" role="tab" aria-selected="false">Snails</button>
         <button id="configTabButton" class="tab-button" data-tab="config" type="button" role="tab" aria-selected="false">Config</button>
         <button id="aboutTabButton" class="tab-button" data-tab="about" type="button" role="tab" aria-selected="false">About</button>
         <button id="nftMarketTabButton" class="tab-button" data-tab="nftMarket" type="button" role="tab" aria-selected="false">NFT Market</button>
@@ -329,6 +330,95 @@
         </div>
       </section>
 
+      <section id="snailsPanel" class="tab-panel" role="tabpanel" aria-labelledby="snailsTabButton" hidden>
+        <section id="snailsNotice" class="notice" hidden></section>
+
+        <section class="panel snails-panel">
+          <div class="panel-head">
+            <div>
+              <h2>OnePlant Snails <span class="snails-max-supply">Max Supply: 3,333</span></h2>
+              <p>Mint portal for OnePlantSnails OP holder, collab, and Public Free Mint flows.</p>
+            </div>
+            <button id="snailsRefreshButton" class="secondary" type="button">Refresh Snails</button>
+          </div>
+
+          <section class="snails-hero" aria-label="OnePlant Snails mint introduction">
+            <div class="snails-preview-card">
+              <img id="snailsPreviewImage" src="./snails/hidden.jpeg" alt="OnePlant Snails hidden preview" loading="lazy" decoding="async">
+            </div>
+            <div class="snails-copy">
+              <p class="home-kicker">OnePlant universe companion</p>
+              <h3>OnePlant Snails mint access</h3>
+              <p>Connect your wallet to check OP Holder Free Mint, Collab Free Mint, and Public Free Mint availability directly from the OnePlantSnails contract.</p>
+              <p>The website reads the on-chain free mint eligibility state as the source of truth.</p>
+            </div>
+          </section>
+
+          <section class="snails-metrics" aria-label="OnePlant Snails mint state">
+            <div class="metric">
+              <span>Contract</span>
+              <strong id="snailsContractMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>Supply</span>
+              <strong id="snailsSupplyMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>Allowlist</span>
+              <strong id="snailsAllowlistMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>Public Free Mint</span>
+              <strong id="snailsFreeMintMetric">-</strong>
+            </div>
+            <div class="metric">
+              <span>Wallet</span>
+              <strong id="snailsWalletMetric">Connect wallet</strong>
+            </div>
+          </section>
+
+          <section id="snailsWalletSummary" class="snails-wallet-summary">
+            Connect wallet to check your OnePlantSnails mint eligibility.
+          </section>
+
+          <div class="snails-actions">
+            <section class="snails-mint-card">
+              <div>
+                <h3>OP Holder Free Mint</h3>
+                <p id="snailsOpStatus">Connect wallet to check OP Holder Free Mint allocation.</p>
+              </div>
+              <button id="snailsOpMintButton" type="button" disabled>OP Holder Free Mint Max</button>
+            </section>
+
+            <section class="snails-mint-card">
+              <div>
+                <h3>Collab Free Mint</h3>
+                <p id="snailsCollabStatus">Connect wallet to check Collab Free Mint allocation.</p>
+              </div>
+              <button id="snailsCollabMintButton" type="button" disabled>Collab Free Mint Max</button>
+            </section>
+
+            <section class="snails-mint-card">
+              <div>
+                <h3>Public Free Mint</h3>
+                <p id="snailsFreeStatus">Connect wallet to check Public Free Mint restrictions.</p>
+              </div>
+              <button id="snailsFreeMintButton" type="button" disabled>Public Free Mint</button>
+            </section>
+          </div>
+
+          <section class="snails-rules" aria-label="OnePlant Snails Public Free Mint restrictions">
+            <h3>Public Free Mint restrictions</h3>
+            <ul id="snailsFreeMintRules">
+              <li>EOA wallet only; smart contract or delegated-code wallets may be rejected.</li>
+              <li>Wallet must hold at least 0.01 ETH when minting.</li>
+              <li>Maximum 1 Public Free Mint per wallet.</li>
+              <li>Per-block Public Free Mint throttle applies.</li>
+            </ul>
+          </section>
+        </section>
+      </section>
+
       <section id="plantingPanel" class="tab-panel" role="tabpanel" aria-labelledby="plantingTabButton" hidden>
         <section id="plantingNotice" class="notice" hidden></section>
 
@@ -497,11 +587,12 @@
       <a id="upLink" href="#" target="_blank" rel="noreferrer">UP</a>
       <a id="hookLink" href="#" target="_blank" rel="noreferrer">HOOK</a>
       <a id="plantingLink" href="#" target="_blank" rel="noreferrer">Planting</a>
+      <a id="snailsLink" href="#" target="_blank" rel="noreferrer">Snails</a>
       <a id="helperLink" href="#" target="_blank" rel="noreferrer">SwapHelper</a>
       <a id="lpLockLink" href="#" target="_blank" rel="noreferrer">LP Lock</a>
       <span id="configStatus">Loading config...</span>
     </footer>
 
-    <script type="module" src="./app.js?v=20260614-swap-buy-natural-copy"></script>
+    <script type="module" src="./app.js?v=20260617-snails-spot-remaining"></script>
   </body>
 </html>
