@@ -24,7 +24,8 @@
         "plantingSale": "0x1063F31c817FcCB7339Ae729Fd86879CCc5B3f3C",
         "swapHelper": "0x6dD5309338E6cD71a7d35c4c5840f15B51B6481f",
         "hook": "0xC5e600b573ABa770f8B5e3da6c3dd45Ff5E440Cc",
-        "lpPositionLocker": "0x42054D8B9eAEa6974E3B8F2ae1be22bA6BB2D542"
+        "lpPositionLocker": "0x42054D8B9eAEa6974E3B8F2ae1be22bA6BB2D542",
+        "onePlantSnails": "0x7FfaA700ab98C5c1ff062aec7e768BED5C4d2EB2"
       },
       "poolKey": {
         "currency0": "0x0000000000000000000000000000000000000000",
@@ -41,6 +42,14 @@
     "externalTabLabel": "Official X",
     "externalTabUrl": "https://x.com/onchain_artists",
     "maxTokenImages": 1000,
-    "pollAfterTxMs": 2500
+    "pollAfterTxMs": 2500,
+    "snails": {
+      "hiddenImagePath": "./snails/hidden.jpeg",
+      "freeMintMinEth": "0.01",
+      "freeMintMaxPerWallet": 1,
+      "freeMintMaxPerBlock": 5,
+      "plainEoaOnly": true,
+      "mintStatusRefreshAfterTxMs": 2500
+    }
   }
 }
