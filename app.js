@@ -56,10 +56,13 @@ const PLANTING_SALE_ABI = [
 
 const SNAILS_ABI = [
   "function MAX_SUPPLY() view returns (uint256)",
+  "function NON_OP_SPOTS() view returns (uint256)",
   "function totalSupply() view returns (uint256)",
+  "function nonOpMinted() view returns (uint256)",
   "function allowlistMintEndsAt() view returns (uint256)",
   "function allowlistMintOpen() view returns (bool)",
   "function freeMintEnabled() view returns (bool)",
+  "function freeMintedInBlock(uint256 blockNumber) view returns (uint256)",
   "function walletMintInfo(address account) view returns (uint256 opAllocation,uint256 opMintedByWallet,uint256 opRemaining,uint256 collabWalletAllocation,uint256 collabMintedByWallet,uint256 collabRemaining,uint256 freeMintedByWallet,uint256 allowlistEndsAt,bool isAllowlistOpen,bool isFreeMintOpen)",
   "function mintOpAllowlist()",
   "function mintCollab()",
@@ -1214,17 +1217,29 @@ async function refreshSnails(options = {}) {
     const readProvider = state.readProvider || buildReadProvider(network);
     const contract = state.contracts.snailsRead || new ethers.Contract(network.contracts.onePlantSnails, SNAILS_ABI, readProvider);
     const queryAccount = state.account || NATIVE;
-    const [totalSupplyRaw, maxSupplyRaw, walletInfoRaw, walletEthRaw, walletCodeRaw] = await Promise.all([
+    const [totalSupplyRaw, maxSupplyRaw, nonOpSpotsRaw, nonOpMintedRaw, walletInfoRaw, walletEthRaw, walletCodeRaw, latestBlock] = await Promise.all([
       contract.totalSupply(),
       contract.MAX_SUPPLY(),
+      contract.NON_OP_SPOTS(),
+      contract.nonOpMinted(),
       contract.walletMintInfo(queryAccount),
       state.account ? readProvider.getBalance(state.account) : 0n,
-      state.account ? readProvider.getCode(state.account).catch(() => "") : "0x"
+      state.account ? readProvider.getCode(state.account).catch(() => "") : "0x",
+      readProvider.getBlock("latest").catch(() => null)
     ]);
+    const latestBlockNumber = latestBlock?.number ?? null;
+    const currentBlockFreeMintedRaw = latestBlockNumber === null
+      ? 0n
+      : await contract.freeMintedInBlock(latestBlockNumber).catch(() => 0n);
     state.snails = {
       contractAddress: network.contracts.onePlantSnails,
       totalSupply: BigInt(totalSupplyRaw),
       maxSupply: BigInt(maxSupplyRaw),
+      nonOpSpots: BigInt(nonOpSpotsRaw),
+      nonOpMinted: BigInt(nonOpMintedRaw),
+      latestBlockNumber,
+      latestBlockTimestamp: latestBlock?.timestamp ?? Math.floor(Date.now() / 1000),
+      currentBlockFreeMinted: BigInt(currentBlockFreeMintedRaw),
       walletInfo: normalizeSnailsWalletInfo(walletInfoRaw),
       walletEth: BigInt(walletEthRaw),
       walletCode: walletCodeRaw || "",
@@ -1289,13 +1304,12 @@ function renderSnailsState() {
   if (!state.account) {
     els.snailsWalletSummary.textContent = "Connect wallet to check OP Holder Free Mint, Collab Free Mint, and Public Free Mint eligibility.";
   } else {
-    const freeMintMax = BigInt(snailsRules().freeMintMaxPerWallet);
-    const freeMintRemaining = freeMintMax > info.freeMintedByWallet ? freeMintMax - info.freeMintedByWallet : 0n;
+    const freeAvailability = snailsPublicFreeAvailability(info, s);
     els.snailsWalletSummary.innerHTML = `
       <div class="snails-eligibility-list">
         ${snailsEligibilityRow("OP Holder Free Mint", info.opRemaining, info.opMintedByWallet)}
         ${snailsEligibilityRow("Collab Free Mint", info.collabRemaining, info.collabMintedByWallet)}
-        ${snailsEligibilityRow("Public Free Mint", freeMintRemaining, info.freeMintedByWallet)}
+        ${snailsEligibilityRow("Public Free Mint", freeAvailability.displayRemaining, info.freeMintedByWallet)}
       </div>
     `;
   }
@@ -1310,6 +1324,40 @@ function snailsEligibilityRow(label, remaining, minted) {
       <span class="snails-eligibility-values"><span class="snails-remaining-count">${remaining.toString()}</span> spot remaining, <span>${minted.toString()}</span> minted.</span>
     </div>
   `;
+}
+
+function snailsMinBigInt(a, b) {
+  return a < b ? a : b;
+}
+
+function snailsPublicFreeAvailability(info, snailsState = state.snails) {
+  const rules = snailsRules();
+  const freeMintMax = BigInt(rules.freeMintMaxPerWallet);
+  const walletRemaining = freeMintMax > info.freeMintedByWallet ? freeMintMax - info.freeMintedByWallet : 0n;
+  const totalRemaining = snailsState && snailsState.maxSupply > snailsState.totalSupply ? snailsState.maxSupply - snailsState.totalSupply : 0n;
+  const nonOpRemaining = snailsState && snailsState.nonOpSpots > snailsState.nonOpMinted ? snailsState.nonOpSpots - snailsState.nonOpMinted : 0n;
+  const latestTimestamp = BigInt(snailsState?.latestBlockTimestamp ?? Math.floor(Date.now() / 1000));
+  const allowlistExpired = info.allowlistEndsAt > 0n && latestTimestamp >= info.allowlistEndsAt;
+  const poolRemaining = allowlistExpired ? totalRemaining : snailsMinBigInt(totalRemaining, nonOpRemaining);
+  const perBlockMax = BigInt(rules.freeMintMaxPerBlock);
+  const currentBlockRemaining = perBlockMax > (snailsState?.currentBlockFreeMinted || 0n) ? perBlockMax - (snailsState?.currentBlockFreeMinted || 0n) : 0n;
+  const plainEoaOk = !rules.plainEoaOnly || !snailsState?.walletCode || snailsState.walletCode === "0x";
+  const hasMinEth = Boolean(state.account) && snailsState?.walletEth >= minFreeMintEthWei();
+  const displayRemaining = state.account && info.isFreeMintOpen && walletRemaining > 0n && plainEoaOk && hasMinEth && poolRemaining > 0n
+    ? snailsMinBigInt(walletRemaining, poolRemaining)
+    : 0n;
+
+  return {
+    walletRemaining,
+    totalRemaining,
+    nonOpRemaining,
+    poolRemaining,
+    currentBlockRemaining,
+    allowlistExpired,
+    plainEoaOk,
+    hasMinEth,
+    displayRemaining
+  };
 }
 
 function allowlistStatusLabel(info) {
@@ -1336,16 +1384,15 @@ function updateSnailsControls() {
   }
   const info = s.walletInfo;
   const hasWallet = Boolean(state.account);
-  const plainEoaOk = !snailsRules().plainEoaOnly || !s.walletCode || s.walletCode === "0x";
-  const hasMinEth = !hasWallet || s.walletEth >= minFreeMintEthWei();
+  const freeAvailability = snailsPublicFreeAvailability(info, s);
 
   els.snailsOpStatus.textContent = snailsOpStatus(info);
   els.snailsCollabStatus.textContent = snailsCollabStatus(info);
-  els.snailsFreeStatus.textContent = snailsFreeStatus(info, s.walletEth, plainEoaOk, hasMinEth);
+  els.snailsFreeStatus.textContent = snailsFreeStatus(info, s.walletEth, freeAvailability);
 
   els.snailsOpMintButton.disabled = state.busy || !hasWallet || !info.isAllowlistOpen || info.opRemaining === 0n;
   els.snailsCollabMintButton.disabled = state.busy || !hasWallet || !info.isAllowlistOpen || info.collabRemaining === 0n;
-  els.snailsFreeMintButton.disabled = state.busy || !hasWallet || !info.isFreeMintOpen || info.freeMintedByWallet >= BigInt(snailsRules().freeMintMaxPerWallet) || !plainEoaOk || !hasMinEth;
+  els.snailsFreeMintButton.disabled = state.busy || !hasWallet || !info.isFreeMintOpen || freeAvailability.walletRemaining === 0n || !freeAvailability.plainEoaOk || !freeAvailability.hasMinEth || freeAvailability.poolRemaining === 0n || freeAvailability.currentBlockRemaining === 0n;
 }
 
 function snailsOpStatus(info) {
@@ -1364,14 +1411,16 @@ function snailsCollabStatus(info) {
   return "No Collab Free Mint allocation found for this wallet.";
 }
 
-function snailsFreeStatus(info, walletEth, plainEoaOk, hasMinEth) {
+function snailsFreeStatus(info, walletEth, availability) {
   const rules = snailsRules();
   if (!state.account) return "Connect wallet to check Public Free Mint restrictions.";
   if (!info.isFreeMintOpen) return "Public Free Mint is currently closed.";
-  if (info.freeMintedByWallet >= BigInt(rules.freeMintMaxPerWallet)) return "Public Free Mint already used by this wallet.";
-  if (!plainEoaOk) return "This wallet appears to have contract or delegated code and may be rejected by the Public Free Mint rule.";
-  if (!hasMinEth) return `Wallet needs at least ${rules.freeMintMinEth} ETH. Current balance: ${trimNumber(ethers.formatEther(walletEth), 5)} ETH.`;
-  return `Public Free Mint is available. Requires EOA/no delegated code, at least ${rules.freeMintMinEth} ETH, and the per-block throttle must not be full.`;
+  if (availability.walletRemaining === 0n) return "Public Free Mint already used by this wallet.";
+  if (!availability.plainEoaOk) return "This wallet appears to have contract or delegated code and may be rejected by the Public Free Mint rule.";
+  if (!availability.hasMinEth) return `Wallet needs at least ${rules.freeMintMinEth} ETH. Current balance: ${trimNumber(ethers.formatEther(walletEth), 5)} ETH.`;
+  if (availability.poolRemaining === 0n) return "No Public Free Mint spots are currently available.";
+  if (availability.currentBlockRemaining === 0n) return "The Public Free Mint per-block limit is full. Try again in a later block.";
+  return `Public Free Mint is available. Requires EOA/no delegated code, at least ${rules.freeMintMinEth} ETH, and available Public Free Mint supply.`;
 }
 
 async function executeSnailsMint(mode) {
