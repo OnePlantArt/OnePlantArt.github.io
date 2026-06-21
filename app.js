@@ -1302,14 +1302,12 @@ function renderSnailsState() {
   els.snailsWalletMetric.textContent = state.account ? shortAddress(state.account) : "Connect wallet";
 
   if (!state.account) {
-    els.snailsWalletSummary.textContent = "Connect wallet to check OP Holder Free Mint, Collab Free Mint, and Public Free Mint eligibility.";
+    els.snailsWalletSummary.textContent = "Connect wallet to check OP Holder Free Mint and Collab Free Mint eligibility.";
   } else {
-    const freeAvailability = snailsPublicFreeAvailability(info, s);
     els.snailsWalletSummary.innerHTML = `
       <div class="snails-eligibility-list">
         ${snailsEligibilityRow("OP Holder Free Mint", info.opRemaining, info.opMintedByWallet)}
         ${snailsEligibilityRow("Collab Free Mint", info.collabRemaining, info.collabMintedByWallet)}
-        ${snailsEligibilityRow("Public Free Mint", freeAvailability.displayRemaining, info.freeMintedByWallet)}
       </div>
     `;
   }
@@ -1459,7 +1457,7 @@ async function executeSnailsMint(mode) {
 function formatUnixTimestamp(value) {
   const seconds = Number(value);
   if (!Number.isFinite(seconds) || seconds <= 0) return "-";
-  return new Date(seconds * 1000).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return new Date(seconds * 1000).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 async function refreshNFTs() {
