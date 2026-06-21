@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>OnePlantArt</title>
-    <link rel="stylesheet" href="./styles.css?v=20260619-snails-real-free-mint-checks">
+    <link rel="stylesheet" href="./styles.css?v=20260621-snails-allowlist-layout">
   </head>
   <body>
     <header class="topbar">
@@ -337,7 +337,7 @@
           <div class="panel-head">
             <div>
               <h2>OnePlant Snails <span class="snails-max-supply">Max Supply: 3,333</span></h2>
-              <p>Mint portal for OnePlantSnails OP holder, collab, and Public Free Mint flows.</p>
+              <p>Mint portal for OnePlantSnails OP holder and collab free mint flows.</p>
             </div>
             <button id="snailsRefreshButton" class="secondary" type="button">Refresh Snails</button>
           </div>
@@ -349,7 +349,7 @@
             <div class="snails-copy">
               <p class="home-kicker">OnePlant universe companion</p>
               <h3>OnePlant Snails mint access</h3>
-              <p>Connect your wallet to check OP Holder Free Mint, Collab Free Mint, and Public Free Mint availability directly from the OnePlantSnails contract.</p>
+              <p>Connect your wallet to check OP Holder Free Mint and Collab Free Mint availability directly from the OnePlantSnails contract.</p>
               <p>The website reads the on-chain free mint eligibility state as the source of truth.</p>
             </div>
           </section>
@@ -367,7 +367,7 @@
               <span>Allowlist Free Mint</span>
               <strong id="snailsAllowlistMetric">-</strong>
             </div>
-            <div class="metric">
+            <div class="metric snails-public-free-mint-ui">
               <span>Public Free Mint</span>
               <strong id="snailsFreeMintMetric">-</strong>
             </div>
@@ -398,7 +398,7 @@
               <button id="snailsCollabMintButton" type="button" disabled>Collab Free Mint Max</button>
             </section>
 
-            <section class="snails-mint-card">
+            <section class="snails-mint-card snails-public-free-mint-ui">
               <div>
                 <h3>Public Free Mint</h3>
                 <p id="snailsFreeStatus">Connect wallet to check Public Free Mint restrictions.</p>
@@ -407,7 +407,7 @@
             </section>
           </div>
 
-          <section class="snails-rules" aria-label="OnePlant Snails Public Free Mint restrictions">
+          <section class="snails-rules snails-public-free-mint-ui" aria-label="OnePlant Snails Public Free Mint restrictions">
             <h3>Public Free Mint restrictions</h3>
             <ul id="snailsFreeMintRules">
               <li>EOA wallet only; smart contract or delegated-code wallets may be rejected.</li>
@@ -593,6 +593,6 @@
       <span id="configStatus">Loading config...</span>
     </footer>
 
-    <script type="module" src="./app.js?v=20260619-snails-real-free-mint-checks"></script>
+    <script type="module" src="./app.js?v=20260621-snails-allowlist-layout"></script>
   </body>
 </html>
